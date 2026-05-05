@@ -2,6 +2,7 @@ local internal = RunDirectorBoonBans_Internal
 local godMeta = internal.godMeta
 internal.godInfo = internal.godInfo or {}
 local godInfo = internal.godInfo
+local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 
 local band, lshift, rshift, bor, bnot = bit32.band, bit32.lshift, bit32.rshift, bit32.bor, bit32.bnot
@@ -49,19 +50,19 @@ end
 
 function internal.GetRunState()
     if not CurrentRun then return nil end
-    if not CurrentRun.RunDirector_BoonBans_State then
-        CurrentRun.RunDirector_BoonBans_State = {
+    local state = lib.gameObject.get(CurrentRun, PACK_ID, MODULE_ID, "run", function()
+        return {
             BoonPickCounts = {},
             ImproveFirstNBoonRarity = internal.store.read("ImproveFirstNBoonRarity") or 0,
         }
+    end)
+    if not state.BoonPickCounts then
+        state.BoonPickCounts = {}
     end
-    if not CurrentRun.RunDirector_BoonBans_State.BoonPickCounts then
-        CurrentRun.RunDirector_BoonBans_State.BoonPickCounts = {}
+    if state.ImproveFirstNBoonRarity == nil then
+        state.ImproveFirstNBoonRarity = internal.store.read("ImproveFirstNBoonRarity") or 0
     end
-    if CurrentRun.RunDirector_BoonBans_State.ImproveFirstNBoonRarity == nil then
-        CurrentRun.RunDirector_BoonBans_State.ImproveFirstNBoonRarity = internal.store.read("ImproveFirstNBoonRarity") or 0
-    end
-    return CurrentRun.RunDirector_BoonBans_State
+    return state
 end
 
 function internal.GetRarityValue(godKey, bitIndex, session)
