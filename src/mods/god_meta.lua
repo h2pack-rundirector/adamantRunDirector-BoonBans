@@ -20,9 +20,9 @@ local GROUP_UW_NPC     = "Underworld"
 local GROUP_SF_NPC     = "Surface"
 local GROUP_KEEPSAKES  = "Keepsakes"
 
-local MAX_GOD_TIERS    = 5
-local MAX_HAMMER_TIERS = 3
-local MAX_HERMES_TIERS = 2
+local MAX_GOD_TIERS    = 10
+local MAX_HAMMER_TIERS = 5
+local MAX_HERMES_TIERS = 5
 
 -- =============================================================================
 -- 2. DYNAMIC BIT COUNTER
@@ -257,6 +257,8 @@ for _, def in ipairs(baseOlympians) do
         displayTextKey = def.name,
         colorKey = def.color,
         packedConfig = { var = "Packed" .. def.name .. "1", offset = 0, bits = dynamicBits },
+        tierStateConfig = { var = "Packed" .. def.name .. "TierState", maxTiers = tiers },
+        defaultConfiguredTiers = math.min(tiers, 5),
         lootSource = srcData,
         uiGroup = group,
         tier = 1,
@@ -291,6 +293,8 @@ for _, def in ipairs(baseWeapons) do
         displayTextKey = "1st " .. def.display,
         colorKey = def.color,
         packedConfig = { var = "Packed" .. def.key .. "1", offset = 0, bits = dynamicBits },
+        tierStateConfig = { var = "Packed" .. def.key .. "TierState", maxTiers = tiers },
+        defaultConfiguredTiers = math.min(tiers, 3),
         lootSource = srcData,
         uiGroup = GROUP_HAMMERS,
         showPackedValueColors = false,

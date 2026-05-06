@@ -11,10 +11,11 @@ local HAMMER_ROOT_KEYS = {
     "Suit",
 }
 
-local function BuildHammerRoots()
+local function BuildHammerRoots(session)
     local roots = {}
     for _, rootKey in ipairs(HAMMER_ROOT_KEYS) do
         roots[#roots + 1] = uiData.BuildTierRoot(rootKey, {
+            session = session,
             hasRarity = false,
         })
     end
@@ -49,12 +50,12 @@ end
 
 local function GetActiveHammerRoot(session)
     local activeRootId = session.view[ACTIVE_HAMMER_ROOT_ALIAS]
-    for _, root in ipairs(BuildHammerRoots()) do
+    for _, root in ipairs(BuildHammerRoots(session)) do
         if root.id == activeRootId then
             return root
         end
     end
-    return uiData.BuildTierRoot(HAMMER_ROOT_KEYS[1], { hasRarity = false })
+    return uiData.BuildTierRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
 end
 
 local function DrawHammerForceRow(ui, session, scope)
@@ -79,8 +80,9 @@ local function DrawHammerForceRow(ui, session, scope)
 end
 
 local function DrawHammerForcePanel(ui, session, root)
-    lib.widgets.text(ui, "Force")
+    lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
+    internal.DrawConfiguredTierControl(ui, session, root)
     for _, scope in ipairs(root.scopes) do
         DrawHammerForceRow(ui, session, scope)
     end
@@ -111,7 +113,7 @@ end
 
 function internal.DrawHammersTab(ui, session)
     local tabs = {}
-    for _, root in ipairs(BuildHammerRoots()) do
+    for _, root in ipairs(BuildHammerRoots(session)) do
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetHammerNavLabel(root, session),
@@ -133,7 +135,7 @@ function internal.DrawHammersTab(ui, session)
 
     ui.BeginChild("BoonBansHammersDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansHammersViews##" .. root.id) then
-        if ui.BeginTabItem("Force") then
+        if ui.BeginTabItem("Setup") then
             DrawHammerForcePanel(ui, session, root)
             ui.EndTabItem()
         end

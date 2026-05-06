@@ -275,12 +275,15 @@ function uiData.GetTierScopeKey(rootKey, tier)
     return rootKey .. tostring(tier)
 end
 
-function uiData.BuildTierScopes(rootKey)
+function uiData.BuildTierScopes(rootKey, session)
     local rootMeta = uiData.GetRootMeta(rootKey) or {}
     local maxTiers = math.max(math.floor(tonumber(rootMeta.maxTiers) or 1), 1)
+    local configuredTiers = internal.GetConfiguredTierCount and internal.GetConfiguredTierCount(rootKey, session) or maxTiers
+    if configuredTiers < 1 then configuredTiers = 1 end
+    if configuredTiers > maxTiers then configuredTiers = maxTiers end
     local scopes = {}
 
-    for tier = 1, maxTiers do
+    for tier = 1, configuredTiers do
         local scopeKey = uiData.GetTierScopeKey(rootKey, tier)
         if uiData.GetRootMeta(scopeKey) then
             scopes[#scopes + 1] = {
@@ -299,14 +302,97 @@ end
 function uiData.BuildTierRoot(rootKey, opts)
     opts = opts or {}
     local rootMeta = uiData.GetRootMeta(rootKey) or {}
+    local maxTiers = math.max(math.floor(tonumber(rootMeta.maxTiers) or 1), 1)
     return {
         id = rootKey,
         label = opts.label or uiData.GetRootDisplayLabel(rootKey, rootMeta),
         primaryScopeKey = rootKey,
+        maxTiers = maxTiers,
         hasRarity = opts.hasRarity ~= nil and opts.hasRarity or uiData.IsRarityRoot(rootKey),
         hasBridalGlow = opts.hasBridalGlow == true,
-        scopes = uiData.BuildTierScopes(rootKey),
+        scopes = uiData.BuildTierScopes(rootKey, opts.session),
     }
+end
+
+function internal.DrawConfiguredTierControl(ui, session, root)
+    if not root or not root.primaryScopeKey or (root.maxTiers or 1) <= 1 then
+        return
+    end
+
+    local rootKey = root.primaryScopeKey
+    local maxTiers = internal.GetMaxConfigurableTiers(rootKey)
+    if maxTiers <= 1 then
+        return
+    end
+
+    local currentCount = internal.GetConfiguredTierCount(rootKey, session)
+    ui.AlignTextToFramePadding()
+    ui.Text("Configured tiers")
+    ui.SameLine()
+    ui.SetCursorPosX(160)
+    if ui.Button("-##configured_tiers_" .. rootKey) and currentCount > 1 then
+        internal.SetConfiguredTierCount(rootKey, currentCount - 1, session)
+        currentCount = currentCount - 1
+    end
+    ui.SameLine()
+    ui.Text(tostring(currentCount))
+    ui.SameLine()
+    if ui.Button("+##configured_tiers_" .. rootKey) and currentCount < maxTiers then
+        internal.SetConfiguredTierCount(rootKey, currentCount + 1, session)
+        currentCount = currentCount + 1
+    end
+    ui.SameLine()
+    lib.widgets.text(ui, string.format("Boon Bans controls tiers 1-%d. Later tiers use vanilla behavior.", currentCount), {
+        color = uiData.MUTED_TEXT_COLOR,
+    })
+    ui.Spacing()
+end
+
+local function GetSingleForcedBoon(scopeKey, session)
+    local bindAlias = internal.GetBanRootAlias(scopeKey)
+    if not bindAlias then
+        return nil
+    end
+
+    local selectedAlias = lib.widgets.getPackedChoiceAlias(session, bindAlias, internal.store, {
+        selectionMode = "singleDisabled",
+    })
+    if not selectedAlias then
+        return nil
+    end
+
+    for _, boon in ipairs(uiData.GetScopeBoons(scopeKey)) do
+        local childAlias = internal.MakeBanAlias(bindAlias, boon.Key)
+        if childAlias == selectedAlias then
+            return boon
+        end
+    end
+end
+
+function internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
+    if not root or not root.hasRarity or not scope then
+        return
+    end
+
+    local forcedBoon = GetSingleForcedBoon(scope.key, session)
+    if not forcedBoon or not uiData.IsRarityEligibleBoon(forcedBoon) then
+        return
+    end
+
+    local rarityAlias = internal.GetRarityAlias(root.primaryScopeKey, forcedBoon.Key)
+    if not rarityAlias then
+        return
+    end
+
+    ui.SameLine()
+    ui.SetCursorPosX(330)
+    lib.widgets.dropdown(ui, session, rarityAlias, {
+        label = "Rarity",
+        values = { 0, 1, 2, 3 },
+        displayValues = uiData.RARITY_LABELS,
+        valueColors = uiData.RARITY_COLORS,
+        controlWidth = 120,
+    })
 end
 
 function uiData.BuildSingleScopeRoot(rootKey, opts)

@@ -4,6 +4,7 @@ local godMeta = internal.godMeta
 internal.baseBoonCatalog = nil
 internal.packedBanBits = nil
 internal.packedRarityBits = nil
+internal.packedTierStateBits = nil
 internal.packedStorageBits = nil
 
 local bit32 = require("bit32")
@@ -349,6 +350,36 @@ function internal.GetOrBuildPackedRarityBits()
     return bitsByPackedVar
 end
 
+local function BuildPackedTierStateBits()
+    local bitsByPackedVar = {}
+    for _, meta in pairs(godMeta) do
+        local tierState = meta and meta.tierStateConfig or nil
+        local maxTiers = tierState and math.floor(tonumber(tierState.maxTiers) or 0) or 0
+        if tierState and type(tierState.var) == "string" and maxTiers > 1 then
+            local bits = {}
+            for tier = 1, maxTiers do
+                bits[#bits + 1] = {
+                    alias = tierState.var .. "__Tier" .. tostring(tier) .. "Disabled",
+                    label = "Tier " .. tostring(tier) .. " Disabled",
+                    offset = tier - 1,
+                    width = 1,
+                    type = "bool",
+                    default = tier > (meta.defaultConfiguredTiers or maxTiers),
+                }
+            end
+            bitsByPackedVar[tierState.var] = bits
+        end
+    end
+    return bitsByPackedVar
+end
+
+function internal.GetOrBuildPackedTierStateBits()
+    if not internal.packedTierStateBits then
+        internal.packedTierStateBits = BuildPackedTierStateBits()
+    end
+    return internal.packedTierStateBits
+end
+
 function internal.GetOrBuildPackedStorageBits()
     if not internal.packedStorageBits then
         local bitsByPackedVar = {}
@@ -356,6 +387,9 @@ function internal.GetOrBuildPackedStorageBits()
             bitsByPackedVar[packedVar] = bits
         end
         for packedVar, bits in pairs(internal.GetOrBuildPackedRarityBits()) do
+            bitsByPackedVar[packedVar] = bits
+        end
+        for packedVar, bits in pairs(internal.GetOrBuildPackedTierStateBits()) do
             bitsByPackedVar[packedVar] = bits
         end
         internal.packedStorageBits = bitsByPackedVar

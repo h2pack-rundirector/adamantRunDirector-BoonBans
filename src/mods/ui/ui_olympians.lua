@@ -15,10 +15,11 @@ local OLYMPIAN_ROOT_KEYS = {
     "Zeus",
 }
 
-local function BuildOlympianRoots()
+local function BuildOlympianRoots(session)
     local roots = {}
     for _, rootKey in ipairs(OLYMPIAN_ROOT_KEYS) do
         roots[#roots + 1] = uiData.BuildTierRoot(rootKey, {
+            session = session,
             hasBridalGlow = rootKey == "Hera",
         })
     end
@@ -35,10 +36,10 @@ local function IsRootCustomized(root, session)
     return false
 end
 
-local function GetVisibleOlympianRoots()
+local function GetVisibleOlympianRoots(session)
     local godPoolFiltering = uiData.IsGodPoolFilteringActive()
     local roots = {}
-    for _, root in ipairs(BuildOlympianRoots()) do
+    for _, root in ipairs(BuildOlympianRoots(session)) do
         if not godPoolFiltering or uiData.IsGodVisibleInGodPool(root.id) then
             roots[#roots + 1] = root
         end
@@ -64,7 +65,7 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawForceRow(ui, session, scope)
+local function DrawForceRow(ui, session, root, scope)
     local bindAlias = internal.GetBanRootAlias(scope.key)
     if not bindAlias then
         return
@@ -83,13 +84,15 @@ local function DrawForceRow(ui, session, scope)
         valueColors = uiData.BuildPackedBanValueColors(scope.key),
         controlWidth = 220,
     })
+    internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
 end
 
 local function DrawForcePanel(ui, session, root)
-    lib.widgets.text(ui, "Force")
+    lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
+    internal.DrawConfiguredTierControl(ui, session, root)
     for _, scope in ipairs(root.scopes) do
-        DrawForceRow(ui, session, scope)
+        DrawForceRow(ui, session, root, scope)
     end
 end
 
@@ -262,7 +265,7 @@ local function DrawBridalGlowPanel(ui, session)
 end
 
 function internal.DrawOlympiansTab(ui, session)
-    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots()
+    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(session)
     if #visibleRoots == 0 then
         lib.widgets.text(ui, "No Olympians are currently available.", {
             color = uiData.MUTED_TEXT_COLOR,
@@ -300,7 +303,7 @@ function internal.DrawOlympiansTab(ui, session)
     end
 
     if ui.BeginTabBar("BoonBansOlympiansViews##" .. root.id) then
-        if ui.BeginTabItem("Force") then
+        if ui.BeginTabItem("Setup") then
             DrawForcePanel(ui, session, root)
             ui.EndTabItem()
         end

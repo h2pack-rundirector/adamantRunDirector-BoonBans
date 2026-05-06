@@ -21,6 +21,13 @@ end
 local isKeepsakeOffering = false
 local skipIsTraitEligible = false
 
+local function GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
+    skipIsTraitEligible = true
+    local result = base(upgradeOptions, lootData, upgradeChoiceData)
+    skipIsTraitEligible = false
+    return result
+end
+
 local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize)
     local queue = {}
     local duoLegendaryQueue = {}
@@ -64,16 +71,19 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     Log("[Micro] Inspecting Loot: %s (God: %s, Tier: %d)", lootData.Name, tostring(currentGodKey), targetTier)
 
     if currentGodKey then
+        if not internal.IsTierConfigured(currentGodKey, targetTier) then
+            Log("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
+            return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
+        end
+
         local metaKey = (targetTier == 1) and currentGodKey or (currentGodKey .. tostring(targetTier))
         if not godMeta[metaKey] then
             Log("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
-            return base(upgradeOptions, lootData, upgradeChoiceData)
+            return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
     end
 
-    skipIsTraitEligible = true
-    local fullList = base(upgradeOptions, lootData, upgradeChoiceData) or {}
-    skipIsTraitEligible = false
+    local fullList = GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData) or {}
 
     local allowed = {}
     local banned = {}
@@ -164,6 +174,10 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
         if info and info.god then
             local rootKey = internal.GetRootKey(info.god)
             if godMeta[rootKey] and godMeta[rootKey].rarityVar then
+                if currentGodKey == rootKey and not internal.IsTierConfigured(rootKey, targetTier) then
+                    goto continue_rarity
+                end
+
                 local tierKey = rootKey
                 if currentGodKey == rootKey and targetTier > 1 then
                     tierKey = rootKey .. tostring(targetTier)
@@ -185,6 +199,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
                 end
             end
         end
+        ::continue_rarity::
     end
 
     -- Guarantee: if #allowed <= 2 and any allowed boon is absent from the offer (e.g. displaced
@@ -287,6 +302,13 @@ lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
                 if band(cfg, info.mask) ~= 0 then return false end
                 return base(traitData, args)
             end
+        end
+
+        local infoMeta = godMeta[info.god]
+        local infoRoot = internal.GetRootKey(info.god)
+        local infoTier = infoMeta and infoMeta.tier or 1
+        if not internal.IsTierConfigured(infoRoot, infoTier) then
+            return base(traitData, args)
         end
 
         if band(internal.GetBanConfig(info.god), info.mask) ~= 0 then

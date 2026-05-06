@@ -25,6 +25,82 @@ local function WriteValue(key, value, session)
     session.write(key, value)
 end
 
+local function GetRootKey(key)
+    local meta = godMeta[key]
+    if not meta then return key end
+    if meta.duplicateOf then return GetRootKey(meta.duplicateOf) end
+    return key
+end
+
+local function GetTierStateConfig(rootKey)
+    local root = GetRootKey(rootKey)
+    local meta = godMeta[root]
+    return meta and meta.tierStateConfig or nil
+end
+
+local function GetDisabledTierMask(enabledCount, maxTiers)
+    local mask = 0
+    for tier = enabledCount + 1, maxTiers do
+        mask = bor(mask, lshift(1, tier - 1))
+    end
+    return mask
+end
+
+function internal.GetMaxConfigurableTiers(rootKey)
+    local tierState = GetTierStateConfig(rootKey)
+    return tierState and math.floor(tonumber(tierState.maxTiers) or 1) or 1
+end
+
+function internal.GetConfiguredTierCount(rootKey, session)
+    local tierState = GetTierStateConfig(rootKey)
+    if not tierState then
+        return 1
+    end
+
+    local maxTiers = internal.GetMaxConfigurableTiers(rootKey)
+    local mask = ReadValue(tierState.var, session) or 0
+    local count = 0
+    for tier = 1, maxTiers do
+        if band(mask, lshift(1, tier - 1)) ~= 0 then
+            break
+        end
+        count = tier
+    end
+    return count
+end
+
+function internal.SetConfiguredTierCount(rootKey, count, session)
+    local tierState = GetTierStateConfig(rootKey)
+    if not tierState then return false end
+
+    local maxTiers = internal.GetMaxConfigurableTiers(rootKey)
+    local nextCount = math.floor(tonumber(count) or 1)
+    if nextCount < 1 then nextCount = 1 end
+    if nextCount > maxTiers then nextCount = maxTiers end
+
+    local nextValue = GetDisabledTierMask(nextCount, maxTiers)
+    local currentValue = ReadValue(tierState.var, session) or 0
+    if currentValue == nextValue then
+        return false
+    end
+    WriteValue(tierState.var, nextValue, session)
+    return true
+end
+
+function internal.IsTierConfigured(rootKey, tier, session)
+    local tierState = GetTierStateConfig(rootKey)
+    if not tierState then
+        return true
+    end
+
+    local tierIndex = math.floor(tonumber(tier) or 1)
+    if tierIndex < 1 or tierIndex > internal.GetMaxConfigurableTiers(rootKey) then
+        return false
+    end
+    local mask = ReadValue(tierState.var, session) or 0
+    return band(mask, lshift(1, tierIndex - 1)) == 0
+end
+
 function internal.SetBanConfig(godKey, value, session)
     local meta = godMeta[godKey]
     if not meta or not meta.packedConfig then return false end

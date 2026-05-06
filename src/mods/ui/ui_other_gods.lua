@@ -14,11 +14,11 @@ local OTHER_GOD_ROOT_SPECS = {
     { id = "Judgement3" },
 }
 
-local function BuildOtherGodRoots()
+local function BuildOtherGodRoots(session)
     local roots = {}
     for _, spec in ipairs(OTHER_GOD_ROOT_SPECS) do
         if spec.tiered then
-            roots[#roots + 1] = uiData.BuildTierRoot(spec.id)
+            roots[#roots + 1] = uiData.BuildTierRoot(spec.id, { session = session })
         else
             roots[#roots + 1] = uiData.BuildSingleScopeRoot(spec.id)
         end
@@ -46,15 +46,15 @@ end
 
 local function GetActiveRoot(session)
     local activeRootId = session.view[ACTIVE_OTHER_GOD_ROOT_ALIAS]
-    for _, root in ipairs(BuildOtherGodRoots()) do
+    for _, root in ipairs(BuildOtherGodRoots(session)) do
         if root.id == activeRootId then
             return root
         end
     end
-    return BuildOtherGodRoots()[1]
+    return BuildOtherGodRoots(session)[1]
 end
 
-local function DrawForceRow(ui, session, scope)
+local function DrawForceRow(ui, session, root, scope)
     local bindAlias = internal.GetBanRootAlias(scope.key)
     if not bindAlias then
         return
@@ -73,13 +73,15 @@ local function DrawForceRow(ui, session, scope)
         valueColors = uiData.BuildPackedBanValueColors(scope.key),
         controlWidth = 220,
     })
+    internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
 end
 
 local function DrawForcePanel(ui, session, root)
-    lib.widgets.text(ui, "Force")
+    lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
+    internal.DrawConfiguredTierControl(ui, session, root)
     for _, scope in ipairs(root.scopes) do
-        DrawForceRow(ui, session, scope)
+        DrawForceRow(ui, session, root, scope)
     end
 end
 
@@ -129,7 +131,7 @@ end
 
 function internal.DrawOtherGodsTab(ui, session)
     local tabs = {}
-    for _, root in ipairs(BuildOtherGodRoots()) do
+    for _, root in ipairs(BuildOtherGodRoots(session)) do
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetNavLabel(root, session),
@@ -151,7 +153,7 @@ function internal.DrawOtherGodsTab(ui, session)
 
     ui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
-        if #root.scopes > 1 and ui.BeginTabItem("Force") then
+        if #root.scopes > 1 and ui.BeginTabItem("Setup") then
             DrawForcePanel(ui, session, root)
             ui.EndTabItem()
         end
