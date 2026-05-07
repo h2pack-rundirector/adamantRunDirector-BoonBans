@@ -57,8 +57,8 @@ local function GetBitCount(source, defaultPrefix)
     elseif source.type == "UnitSet" then
         -- Count NPC Traits (Arachne, Narcissus, etc.)
         local unit = UnitSetData[source.unitKey]
-        if unit and unit[source.configKey] and unit[source.configKey].Traits then
-            count = #unit[source.configKey].Traits
+        if unit and unit[source.unitSetKey] and unit[source.unitSetKey].Traits then
+            count = #unit[source.unitSetKey].Traits
         end
     elseif source.type == "SpellData" then
         -- Count Selene Spells
@@ -149,7 +149,7 @@ local baseSingles = {
     { key = "Arachne",       color = "ArachneVoice",      group = GROUP_UW_NPC },
     { key = "Narcissus",     color = "NarcissusVoice",    group = GROUP_UW_NPC },
     { key = "Echo",          color = "EchoVoice",         group = GROUP_UW_NPC },
-    { key = "Hades",         color = "HadesVoice",        group = GROUP_UW_NPC,    configKey = "NPC_Hades_Field_01" },
+    { key = "Hades",         color = "HadesVoice",        group = GROUP_UW_NPC,    unitSetKey = "NPC_Hades_Field_01" },
     -- Surface
     { key = "Medea",         color = "MedeaVoice",        group = GROUP_SF_NPC },
     { key = "Circe",         color = "CirceVoice",        group = GROUP_SF_NPC },
@@ -157,8 +157,8 @@ local baseSingles = {
     { key = "Dionysus",      color = "DionysusDamage",    group = GROUP_SF_NPC },
     -- Bonus
     { key = "Selene",        color = "SeleneVoice",       group = GROUP_BONUS,     lootSourceType = "SpellData" },
-    { key = "Artemis",       color = "ArtemisDamage",     group = GROUP_BONUS,     configKey = "NPC_Artemis_Field_01" },
-    { key = "Athena",        color = "AthenaDamageLight", group = GROUP_BONUS,     configKey = "NPC_Athena_01" },
+    { key = "Artemis",       color = "ArtemisDamage",     group = GROUP_BONUS,     unitSetKey = "NPC_Artemis_Field_01" },
+    { key = "Athena",        color = "AthenaDamageLight", group = GROUP_BONUS,     unitSetKey = "NPC_Athena_01" },
     -- Keepsake
     { key = "HadesKeepsake", color = "HadesVoice",        group = GROUP_KEEPSAKES,
     duplicateOf = "Hades", display = "Jeweled Pom", lootSourceType = "Keepsake" }
@@ -327,7 +327,7 @@ for _, def in ipairs(baseSingles) do
         sourceData = {
             type = "UnitSet",
             unitKey = "NPC_" .. def.key,
-            configKey = def.configKey or
+            unitSetKey = def.unitSetKey or
                 ("NPC_" .. def.key .. "_01")
         }
     elseif sourceType == "SpellData" then

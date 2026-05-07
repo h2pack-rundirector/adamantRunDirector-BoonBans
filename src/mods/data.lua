@@ -6,7 +6,7 @@ local function BuildPackedStorageNode(item)
         return {
             type = "int",
             alias = item.key,
-            configKey = item.key,
+            default = item.default,
         }
     end
 
@@ -19,35 +19,37 @@ local function BuildPackedStorageNode(item)
     return {
         type = "packedInt",
         alias = item.key,
-        configKey = item.key,
         default = item.default,
         width = packedWidth,
         bits = bits,
     }
 end
 
-function internal.BuildStorage(config)
+function internal.BuildStorage()
     local storage = {
-        { type = "int",    alias = "ImproveFirstNBoonRarity",         configKey = "ImproveFirstNBoonRarity",         min = 0, max = 15 },
-        { type = "string", alias = "BridalGlowTargetBoon",            configKey = "BridalGlowTargetBoon",            maxLen = 128 },
-        { type = "int",    alias = "NpcViewRegion",                   lifetime = "transient",                         default = 4, min = 1, max = 4 },
-        { type = "string", alias = "BanFilterText",                   lifetime = "transient",                         default = "", maxLen = 128 },
-        { type = "string", alias = "ActiveOlympianRoot",              lifetime = "transient",
+        { type = "int",    alias = "ImproveFirstNBoonRarity",
+            default = 0, min = 0, max = 15 },
+        { type = "string", alias = "BridalGlowTargetBoon",
+            default = "", maxLen = 128 },
+        { type = "int",    alias = "NpcViewRegion",                   persist = false, hash = false,
+            default = 4, min = 1, max = 4 },
+        { type = "string", alias = "BanFilterText",                   persist = false, hash = false,
+            default = "", maxLen = 128 },
+        { type = "string", alias = "ActiveOlympianRoot",              persist = false, hash = false,
             default = "Aphrodite", maxLen = 64 },
-        { type = "string", alias = "ActiveOtherGodRoot",              lifetime = "transient",
+        { type = "string", alias = "ActiveOtherGodRoot",              persist = false, hash = false,
             default = "Hermes", maxLen = 64 },
-        { type = "string", alias = "ActiveHammerRoot",                lifetime = "transient",
+        { type = "string", alias = "ActiveHammerRoot",                persist = false, hash = false,
             default = "Staff", maxLen = 64 },
-        { type = "string", alias = "ActiveNpcRoot",                   lifetime = "transient",
+        { type = "string", alias = "ActiveNpcRoot",                   persist = false, hash = false,
             default = "Arachne", maxLen = 64 },
-        { type = "string", alias = "BridalGlowRoot",                  lifetime = "transient",                         default = "", maxLen = 64 },
+        { type = "string", alias = "BridalGlowRoot",                  persist = false, hash = false,
+            default = "", maxLen = 64 },
     }
 
     local packedKeys = {}
-    for key, value in pairs(config) do
-        if type(key) == "string" and key:find("^Packed") then
-            table.insert(packedKeys, { key = key, default = value })
-        end
+    for key in pairs(internal.GetOrBuildPackedStorageBits()) do
+        table.insert(packedKeys, { key = key, default = 0 })
     end
     table.sort(packedKeys, function(a, b)
         return a.key < b.key

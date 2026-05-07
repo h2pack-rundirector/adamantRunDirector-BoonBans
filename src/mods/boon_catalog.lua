@@ -109,10 +109,10 @@ local function AddLootSetBoons(entry, godKey, meta, src)
 end
 
 local function AddUnitSetBoons(entry, godKey, src)
-    if not UnitSetData[src.unitKey] or not UnitSetData[src.unitKey][src.configKey] then
+    if not UnitSetData[src.unitKey] or not UnitSetData[src.unitKey][src.unitSetKey] then
         return
     end
-    local traitList = UnitSetData[src.unitKey][src.configKey].Traits
+    local traitList = UnitSetData[src.unitKey][src.unitSetKey].Traits
     if not traitList then
         return
     end

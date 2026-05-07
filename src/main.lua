@@ -12,7 +12,6 @@ local reload = mods["SGG_Modding-ReLoad"]
 ---@type AdamantModpackLib
 lib = mods["adamant-ModpackLib"]
 
-local dataDefaults = import("config.lua")
 local config = chalk.auto("config.lua")
 
 local PACK_ID = "run-director"
@@ -21,7 +20,7 @@ local PLUGIN_GUID = _PLUGIN.guid
 ---@class RunDirectorBoonBansInternal
 ---@field store ManagedStore|nil
 ---@field standaloneUi StandaloneRuntime|nil
----@field BuildStorage fun(config: table): StorageSchema|nil
+---@field BuildStorage fun(): StorageSchema|nil
 ---@field RegisterHooks fun()|nil
 ---@field DrawTab fun(imgui: table, session: AuthorSession)|nil
 ---@field DrawQuickContent fun(imgui: table, session: AuthorSession)|nil
@@ -53,13 +52,13 @@ local function init()
     import("mods/logic.lua")
     import("mods/ui.lua")
 
-    local definition = lib.prepareDefinition(internal, dataDefaults, {
+    local definition = lib.prepareDefinition(internal, {
         modpack = PACK_ID,
         id = MODULE_ID,
         name = "Boon Bans",
         tooltip = "Ban boon offerings and force rarity behavior.",
         affectsRunData = false,
-        storage = internal.BuildStorage(dataDefaults),
+        storage = internal.BuildStorage(),
     })
 
     local store, session = lib.createStore(config, definition)
