@@ -2,14 +2,13 @@
 ---@diagnostic disable: lowercase-global
 
 local internal = RunDirectorBoonBans_Internal
-local PACK_ID = "run-director"
 
 local SOURCE_FIELD = internal.BoonOfferSourceField or "RunDirectorBoonBans_OfferSourceName"
 
 internal.BoonOfferSourceField = SOURCE_FIELD
 
 local function IsBoonBansActive()
-    return lib.isModuleEnabled(internal.store, PACK_ID)
+    return internal.host.isEnabled()
 end
 
 function internal.IsDuoTraitName(traitName)

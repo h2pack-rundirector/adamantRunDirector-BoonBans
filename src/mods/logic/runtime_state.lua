@@ -3,7 +3,6 @@
 
 local internal = RunDirectorBoonBans_Internal
 local godMeta = internal.godMeta
-local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 
 internal.godInfo = internal.godInfo or {}
@@ -16,7 +15,7 @@ local function GetRunState()
 end
 
 local function IsBoonBansActive()
-    return lib.isModuleEnabled(internal.store, PACK_ID)
+    return internal.host.isEnabled()
 end
 
 local function Log(fmt, ...)

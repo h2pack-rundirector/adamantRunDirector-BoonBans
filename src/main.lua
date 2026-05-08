@@ -19,6 +19,7 @@ local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
 ---@class RunDirectorBoonBansInternal
 ---@field store ManagedStore|nil
+---@field host AuthorHost|nil
 ---@field standaloneUi StandaloneRuntime|nil
 ---@field BuildStorage fun(): StorageSchema|nil
 ---@field RegisterHooks fun()|nil
@@ -52,22 +53,17 @@ local function init()
     import("mods/logic.lua")
     import("mods/ui.lua")
 
-    local definition = lib.prepareDefinition(internal, {
-        modpack = PACK_ID,
-        id = MODULE_ID,
-        name = "Boon Bans",
-        tooltip = "Ban boon offerings and force rarity behavior.",
-        affectsRunData = false,
-        storage = internal.BuildStorage(),
-    })
-
-    local store, session = lib.createStore(config, definition)
-    internal.store = store
-    lib.createModuleHost({
+    internal.host, internal.store = lib.createModule({
+        owner = internal,
         pluginGuid = PLUGIN_GUID,
-        definition = definition,
-        store = store,
-        session = session,
+        config = config,
+        definition = {
+            modpack = PACK_ID,
+            id = MODULE_ID,
+            name = "Boon Bans",
+            tooltip = "Ban boon offerings and force rarity behavior.",
+            storage = internal.BuildStorage(),
+        },
         hookOwner = internal,
         registerHooks = internal.RegisterHooks,
         drawTab = internal.DrawTab,
