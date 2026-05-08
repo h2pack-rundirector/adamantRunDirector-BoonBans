@@ -68,7 +68,11 @@ local function init()
         drawTab = internal.DrawTab,
         drawQuickContent = internal.DrawQuickContent,
     })
-    internal.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
+    if not lib.isModuleCoordinated(PACK_ID) then
+        internal.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
+    else
+        internal.standaloneUi = nil
+    end
 end
 
 local loader = reload.auto_single()
