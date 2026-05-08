@@ -64,7 +64,6 @@ local function init()
             tooltip = "Ban boon offerings and force rarity behavior.",
             storage = internal.BuildStorage(),
         },
-        hookOwner = internal,
         registerHooks = internal.RegisterHooks,
         drawTab = internal.DrawTab,
         drawQuickContent = internal.DrawQuickContent,
