@@ -23,8 +23,7 @@ for _, root in ipairs(NPC_ROOTS) do
 end
 
 local function IsRootCustomized(root, session)
-    local banned = uiData.GetScopeSummary(root.primaryScopeKey, session)
-    return banned > 0
+    return uiData.IsScopeCustomized(root.primaryScopeKey, session)
 end
 
 local function GetVisibleNpcRoots(session)

@@ -28,8 +28,7 @@ end
 
 local function IsRootCustomized(root, session)
     for _, scope in ipairs(root.scopes) do
-        local banned = uiData.GetScopeSummary(scope.key, session)
-        if banned > 0 then
+        if uiData.IsScopeCustomized(scope.key, session) then
             return true
         end
     end

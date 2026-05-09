@@ -48,6 +48,8 @@ uiData.ROOT_NAV_WIDTH = 220
 uiData.bridalGlowEligibleRoots = nil
 uiData.rarityRowsByRoot = {}
 uiData.bridalGlowBoonsByRoot = {}
+uiData.packedBanDisplayValuesByScope = {}
+uiData.packedBanValueColorsByScope = {}
 
 function uiData.GetOrdinal(n)
     local s = tostring(n)
@@ -126,6 +128,11 @@ local function GetBoonMarkerColor(boon)
 end
 
 function uiData.BuildPackedBanValueColors(scopeKey)
+    local cached = uiData.packedBanValueColorsByScope[scopeKey]
+    if cached then
+        return cached
+    end
+
     local colors = {}
     local rootAlias = internal.GetBanRootAlias(scopeKey)
     if type(rootAlias) ~= "string" or rootAlias == "" then
@@ -134,6 +141,7 @@ function uiData.BuildPackedBanValueColors(scopeKey)
     local rootKey = internal.GetRootKey and internal.GetRootKey(scopeKey) or scopeKey
     local rootMeta = internal.godMeta and internal.godMeta[rootKey] or nil
     if type(rootMeta) == "table" and rootMeta.showPackedValueColors == false then
+        uiData.packedBanValueColorsByScope[scopeKey] = colors
         return colors
     end
 
@@ -145,10 +153,16 @@ function uiData.BuildPackedBanValueColors(scopeKey)
         end
     end
 
+    uiData.packedBanValueColorsByScope[scopeKey] = colors
     return colors
 end
 
 function uiData.BuildPackedBanDisplayValues(scopeKey)
+    local cached = uiData.packedBanDisplayValuesByScope[scopeKey]
+    if cached then
+        return cached
+    end
+
     local displayValues = {}
     local rootAlias = internal.GetBanRootAlias(scopeKey)
     if type(rootAlias) ~= "string" or rootAlias == "" then
@@ -162,6 +176,7 @@ function uiData.BuildPackedBanDisplayValues(scopeKey)
         end
     end
 
+    uiData.packedBanDisplayValuesByScope[scopeKey] = displayValues
     return displayValues
 end
 
@@ -198,6 +213,10 @@ function uiData.GetScopeSummary(scopeKey, session)
         end
     end
     return banned, total
+end
+
+function uiData.IsScopeCustomized(scopeKey, session)
+    return internal.GetBanConfig(scopeKey, session) ~= 0
 end
 
 function uiData.GetVisibleBanCount(scopeKey, session)
@@ -339,17 +358,14 @@ function internal.DrawConfiguredTierControl(ui, session, root)
     ui.SameLine()
     if ui.Button("+##configured_tiers_" .. rootKey) and currentCount < maxTiers then
         internal.SetConfiguredTierCount(rootKey, currentCount + 1, session)
-        currentCount = currentCount + 1
     end
-    ui.SameLine()
-    lib.widgets.text(ui, string.format("Boon Bans controls tiers 1-%d. Later tiers use vanilla behavior.", currentCount), {
-        color = uiData.MUTED_TEXT_COLOR,
-    })
     ui.Spacing()
 end
 
-local function GetSingleForcedBoon(scopeKey, session)
-    local handle, bindAlias = internal.ResolveBanBinding(scopeKey, session)
+local function GetSingleForcedBoon(scopeKey, session, handle, bindAlias)
+    if not handle or not bindAlias then
+        handle, bindAlias = internal.ResolveBanBinding(scopeKey, session)
+    end
     if not handle or not bindAlias then
         return nil
     end
@@ -369,12 +385,12 @@ local function GetSingleForcedBoon(scopeKey, session)
     end
 end
 
-function internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
+function internal.DrawForcedBoonRarityShortcut(ui, session, root, scope, handle, bindAlias)
     if not root or not root.hasRarity or not scope then
         return
     end
 
-    local forcedBoon = GetSingleForcedBoon(scope.key, session)
+    local forcedBoon = GetSingleForcedBoon(scope.key, session, handle, bindAlias)
     if not forcedBoon or not uiData.IsRarityEligibleBoon(forcedBoon) then
         return
     end
@@ -407,6 +423,7 @@ function internal.DrawForceBanRow(ui, session, root, scope, opts)
     ui.SameLine()
     ui.SetCursorPosX(opts.controlX or 80)
     lib.widgets.packedDropdown(ui, handle, bindAlias, {
+        id = "force_" .. scope.key,
         label = "",
         selectionMode = "singleDisabled",
         noneLabel = "None",
@@ -417,7 +434,7 @@ function internal.DrawForceBanRow(ui, session, root, scope, opts)
     })
 
     if opts.drawRarity ~= false then
-        internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
+        internal.DrawForcedBoonRarityShortcut(ui, session, root, scope, handle, bindAlias)
     end
 end
 
