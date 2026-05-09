@@ -7,15 +7,19 @@ local MODULE_ID = "BoonBans"
 
 local band, lshift, rshift, bor, bnot = bit32.band, bit32.lshift, bit32.rshift, bit32.bor, bit32.bnot
 
-local function Log(fmt, ...)
-    lib.logging.logIf(MODULE_ID, internal.store.read("DebugMode") == true, fmt, ...)
+function internal.MakeStorageAccess(handle)
+    return {
+        read = handle.read,
+        table = handle.table,
+    }
 end
 
-local function ReadValue(key, session)
-    if session then
-        return session.read(key)
-    end
-    return internal.store.read(key)
+local function Log(access, fmt, ...)
+    lib.logging.logIf(MODULE_ID, access.read("DebugMode") == true, fmt, ...)
+end
+
+local function ReadValue(key, access)
+    return access.read(key)
 end
 
 local function WriteValue(key, value, session)
@@ -38,9 +42,8 @@ local function GetTierTableConfig(rootKey)
     return meta and meta.tierTableConfig or nil
 end
 
-local function GetTableHandle(tableAlias, session)
-    local owner = session or internal.store
-    local tableHandle = owner and owner.table and owner.table(tableAlias) or nil
+local function GetTableHandle(tableAlias, access)
+    local tableHandle = access and access.table and access.table(tableAlias) or nil
     if not tableHandle then
         error("Boon Bans missing table storage handle for " .. tostring(tableAlias), 0)
     end
@@ -52,13 +55,13 @@ function internal.GetMaxConfigurableTiers(rootKey)
     return tableConfig and math.floor(tonumber(tableConfig.maxRows) or 1) or 1
 end
 
-function internal.GetConfiguredTierCount(rootKey, session)
+function internal.GetConfiguredTierCount(rootKey, access)
     local tableConfig = GetTierTableConfig(rootKey)
     if not tableConfig then
         return 1
     end
 
-    return GetTableHandle(tableConfig.alias, session):count()
+    return GetTableHandle(tableConfig.alias, access):count()
 end
 
 function internal.SetConfiguredTierCount(rootKey, count, session)
@@ -90,7 +93,7 @@ function internal.SetConfiguredTierCount(rootKey, count, session)
     return true
 end
 
-function internal.IsTierConfigured(rootKey, tier, session)
+function internal.IsTierConfigured(rootKey, tier, access)
     local tableConfig = GetTierTableConfig(rootKey)
     if not tableConfig then
         return true
@@ -100,7 +103,7 @@ function internal.IsTierConfigured(rootKey, tier, session)
     if tierIndex < 1 or tierIndex > internal.GetMaxConfigurableTiers(rootKey) then
         return false
     end
-    return tierIndex <= internal.GetConfiguredTierCount(rootKey, session)
+    return tierIndex <= internal.GetConfiguredTierCount(rootKey, access)
 end
 
 function internal.SetBanConfig(godKey, value, session)
@@ -123,39 +126,39 @@ function internal.SetBanConfig(godKey, value, session)
     return true
 end
 
-function internal.GetBanConfig(godKey, session)
+function internal.GetBanConfig(godKey, access)
     local meta = godMeta[godKey]
     if not meta or not meta.packedConfig then return 0 end
 
-    local handle, bindAlias = internal.ResolveBanBinding(godKey, session)
+    local handle, bindAlias = internal.ResolveBanBinding(godKey, access)
     if not handle or not bindAlias then return 0 end
     local val = handle.read(bindAlias) or 0
     local mask = lshift(1, meta.packedConfig.bits) - 1
     return band(val, mask)
 end
 
-function internal.GetRunState()
+function internal.GetRunState(access)
     if not CurrentRun then return nil end
     local state = lib.gameObject.get(CurrentRun, PACK_ID, MODULE_ID, "run", function()
         return {
             BoonPickCounts = {},
-            ImproveFirstNBoonRarity = internal.store.read("ImproveFirstNBoonRarity") or 0,
+            ImproveFirstNBoonRarity = access.read("ImproveFirstNBoonRarity") or 0,
         }
     end)
     if not state.BoonPickCounts then
         state.BoonPickCounts = {}
     end
     if state.ImproveFirstNBoonRarity == nil then
-        state.ImproveFirstNBoonRarity = internal.store.read("ImproveFirstNBoonRarity") or 0
+        state.ImproveFirstNBoonRarity = access.read("ImproveFirstNBoonRarity") or 0
     end
     return state
 end
 
-function internal.GetRarityValue(godKey, bitIndex, session)
+function internal.GetRarityValue(godKey, bitIndex, access)
     local meta = godMeta[godKey]
     if not meta or not meta.rarityVar then return 0 end
 
-    local packedVal = ReadValue(meta.rarityVar, session) or 0
+    local packedVal = ReadValue(meta.rarityVar, access) or 0
     local shift = bitIndex * 2
     return band(rshift(packedVal, shift), 3)
 end
@@ -192,11 +195,11 @@ function internal.ResetAllRarity(session)
     return changed
 end
 
-function internal.UpdateGodStats(godKey, session)
+function internal.UpdateGodStats(godKey, access)
     local entry = godInfo[godKey]
     if not entry or not entry.boons then return false end
 
-    local godConfig = internal.GetBanConfig(godKey, session)
+    local godConfig = internal.GetBanConfig(godKey, access)
     local count = 0
     for _, boon in ipairs(entry.boons) do
         if band(godConfig, boon.Mask) ~= 0 then
@@ -242,7 +245,7 @@ function internal.ResetGodBans(god, session)
         end
         godInfo[god].banned = 0
         godInfo[god].banLabel = string.format("(%d/%d Banned)", 0, godInfo[god].total or 0)
-        Log("[Micro] Reset bans for %s", god)
+        Log(session, "[Micro] Reset bans for %s", god)
         return true
     end
     return false
@@ -258,7 +261,7 @@ function internal.BanAllGodBans(god, session)
         end
         godInfo[god].banned = godInfo[god].total
         godInfo[god].banLabel = string.format("(%d/%d Banned)", godInfo[god].banned or 0, godInfo[god].total or 0)
-        Log("[Micro] Banned ALL for %s", god)
+        Log(session, "[Micro] Banned ALL for %s", god)
         return true
     end
     return false
@@ -272,7 +275,7 @@ function internal.ResetAllBans(session)
         end
     end
     if changed then
-        Log("[Micro] Global Ban Reset triggered.")
+        Log(session, "[Micro] Global Ban Reset triggered.")
     end
     return changed
 end
@@ -285,7 +288,7 @@ function internal.RecalculateBannedCounts(session)
         end
     end
     if changed then
-        Log("[Micro] Recalculated all ban counts.")
+        Log(session, "[Micro] Recalculated all ban counts.")
     end
     return changed
 end

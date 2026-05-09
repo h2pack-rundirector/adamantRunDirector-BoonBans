@@ -205,7 +205,7 @@ function uiData.GetScopeSummary(scopeKey, session)
 
     local total = 0
     local banned = 0
-    local currentBans = internal.GetBanConfig(scopeKey)
+    local currentBans = 0
     for _, boon in ipairs(uiData.GetScopeBoons(scopeKey)) do
         total = total + 1
         if bit32.band(currentBans, boon.Mask) ~= 0 then

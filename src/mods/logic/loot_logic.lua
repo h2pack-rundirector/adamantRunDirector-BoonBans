@@ -10,12 +10,8 @@ local godInfo = internal.godInfo
 
 local band = bit32.band
 
-local function IsBoonBansActive()
-    return internal.IsBoonBansActive()
-end
-
-local function Log(fmt, ...)
-    lib.logging.logIf(MODULE_ID, internal.store.read("DebugMode") == true, fmt, ...)
+local function Log(access, fmt, ...)
+    lib.logging.logIf(MODULE_ID, access.read("DebugMode") == true, fmt, ...)
 end
 
 local isKeepsakeOffering = false
@@ -28,7 +24,7 @@ local function GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgrad
     return result
 end
 
-local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize)
+local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize, access)
     local queue = {}
     local duoLegendaryQueue = {}
 
@@ -52,15 +48,17 @@ local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize)
         end
     end
 
-    if internal.store.read("DebugMode") and #queue > 0 then
-        Log("[Micro] PriorityQueue generated. Items: %d", #queue)
+    if access.read("DebugMode") and #queue > 0 then
+        Log(access, "[Micro] PriorityQueue generated. Items: %d", #queue)
     end
 
     return queue, duoLegendaryQueue
 end
 
+function internal.RegisterLootHooks(access, isEnabled)
+
 lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
-    if not IsBoonBansActive() then return base(upgradeOptions, lootData, upgradeChoiceData) end
+    if not isEnabled() then return base(upgradeOptions, lootData, upgradeChoiceData) end
 
     local currentGodKey = internal.GetGodFromLootsource(lootData.Name)
     local isHammer = (lootData.Name == "WeaponUpgrade")
@@ -68,17 +66,17 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     local count = (internal.GetOrRecalcBoonCounts()[currentGodKey] or 0)
     local targetTier = count + 1
 
-    Log("[Micro] Inspecting Loot: %s (God: %s, Tier: %d)", lootData.Name, tostring(currentGodKey), targetTier)
+    Log(access, "[Micro] Inspecting Loot: %s (God: %s, Tier: %d)", lootData.Name, tostring(currentGodKey), targetTier)
 
     if currentGodKey then
-        if not internal.IsTierConfigured(currentGodKey, targetTier) then
-            Log("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
+        if not internal.IsTierConfigured(currentGodKey, targetTier, access) then
+            Log(access, "[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
             return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
 
         local metaKey = (targetTier == 1) and currentGodKey or (currentGodKey .. tostring(targetTier))
         if not godMeta[metaKey] then
-            Log("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
+            Log(access, "[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
             return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
     end
@@ -95,7 +93,7 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
             local info = internal.FindTraitInfo(name, currentGodKey, targetTier)
             local isBanned = false
             if info then
-                local cfg = configCache[info.god] or internal.GetBanConfig(info.god)
+                local cfg = configCache[info.god] or internal.GetBanConfig(info.god, access)
                 configCache[info.god] = cfg
                 if band(cfg, info.mask) ~= 0 then
                     isBanned = true
@@ -110,7 +108,7 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
         end
     end
 
-    Log("[Micro] Loot Result: Passed %d, Banned %d", #allowed, #banned)
+    Log(access, "[Micro] Loot Result: Passed %d, Banned %d", #allowed, #banned)
 
     if #allowed == 0 then
         lootData._BoonBans_PendingAllowed = {}
@@ -121,13 +119,14 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     local queue, duoLegendaryQueue = GeneratePriorityQueue(
         allowed,
         isHammer,
-        GetTotalLootChoices()
+        GetTotalLootChoices(),
+        access
     )
 
-    if internal.store.read("DebugMode") then
-        Log("Generated Priority Queue:")
+    if access.read("DebugMode") then
+        Log(access, "Generated Priority Queue:")
         for i, queued in ipairs(queue) do
-            Log("  %d. %s (Rarity: %s)", i, queued.ItemName, tostring(queued.rarity))
+            Log(access, "  %d. %s (Rarity: %s)", i, queued.ItemName, tostring(queued.rarity))
         end
     end
 
@@ -158,7 +157,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
     local duoLegendaryQueue = lootData._BoonBans_DuoLegendaryQueue
     lootData._BoonBans_DuoLegendaryQueue = nil
 
-    if not IsBoonBansActive() then return end
+    if not isEnabled() then return end
 
     local currentGodKey = internal.GetGodFromLootsource(lootData.Name)
     local targetTier = 1
@@ -174,7 +173,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
         if info and info.god then
             local rootKey = internal.GetRootKey(info.god)
             if godMeta[rootKey] and godMeta[rootKey].rarityVar then
-                if currentGodKey == rootKey and not internal.IsTierConfigured(rootKey, targetTier) then
+                if currentGodKey == rootKey and not internal.IsTierConfigured(rootKey, targetTier, access) then
                     goto continue_rarity
                 end
 
@@ -183,17 +182,17 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
                     tierKey = rootKey .. tostring(targetTier)
                 end
 
-                local banConfig = internal.GetBanConfig(tierKey)
+                local banConfig = internal.GetBanConfig(tierKey, access)
                 local isBanned = band(banConfig, info.mask) ~= 0
                 if not isBanned then
-                    local rarityValue = internal.GetRarityValue(rootKey, info.bit)
+                    local rarityValue = internal.GetRarityValue(rootKey, info.bit, access)
                     if rarityValue > 0 then
                         local rarityMap = { [1] = "Common", [2] = "Rare", [3] = "Epic" }
                         local targetRarity = rarityMap[rarityValue]
                         if targetRarity then
                             item.Rarity = targetRarity
                             item.ForceRarity = true
-                            Log("[Rarity] Forced %s on %s", targetRarity, name)
+                            Log(access, "[Rarity] Forced %s on %s", targetRarity, name)
                         end
                     end
                 end
@@ -254,7 +253,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
             if #lootData.UpgradeOptions < maxChoices then
                 table.insert(lootData.UpgradeOptions, newOption)
                 inOffer[name] = true
-                Log("[Micro] Injected allowed boon '%s' into empty slot", name)
+                Log(access, "[Micro] Injected allowed boon '%s' into empty slot", name)
             else
                 -- Displace the last non-allowed slot: not the protected replacement index, not an allowed boon.
                 local displaceIdx = nil
@@ -269,7 +268,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
                 if displaceIdx then
                     lootData.UpgradeOptions[displaceIdx] = newOption
                     inOffer[name] = true
-                    Log("[Micro] Injected allowed boon '%s' into slot %d (displaced non-allowed option)", name, displaceIdx)
+                    Log(access, "[Micro] Injected allowed boon '%s' into slot %d (displaced non-allowed option)", name, displaceIdx)
                 end
             end
         end
@@ -292,13 +291,13 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
 end)
 
 lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
-    if not IsBoonBansActive() or skipIsTraitEligible then return base(traitData, args) end
+    if not isEnabled() or skipIsTraitEligible then return base(traitData, args) end
 
     local info = internal.FindTraitInfo(traitData.Name, nil)
     if info then
         if isKeepsakeOffering and info.god == "Hades" and godMeta[info.god].duplicateOf == nil then
             if godInfo["HadesKeepsake"] then
-                local cfg = internal.GetBanConfig("HadesKeepsake")
+                local cfg = internal.GetBanConfig("HadesKeepsake", access)
                 if band(cfg, info.mask) ~= 0 then return false end
                 return base(traitData, args)
             end
@@ -307,12 +306,12 @@ lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
         local infoMeta = godMeta[info.god]
         local infoRoot = internal.GetRootKey(info.god)
         local infoTier = infoMeta and infoMeta.tier or 1
-        if not internal.IsTierConfigured(infoRoot, infoTier) then
+        if not internal.IsTierConfigured(infoRoot, infoTier, access) then
             return base(traitData, args)
         end
 
-        if band(internal.GetBanConfig(info.god), info.mask) ~= 0 then
-            Log("[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
+        if band(internal.GetBanConfig(info.god, access), info.mask) ~= 0 then
+            Log(access, "[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
             return false
         end
     end
@@ -327,7 +326,7 @@ lib.hooks.Wrap(internal, "GiveRandomHadesBoonAndBoostBoons", function(base, args
 end)
 
 lib.hooks.Wrap(internal, "HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
-    local targetBoon = internal.store.read("BridalGlowTargetBoon")
+    local targetBoon = access.read("BridalGlowTargetBoon")
     if not targetBoon or targetBoon == "" then
         base(args, origTraitData, contextArgs)
         return
@@ -358,3 +357,5 @@ lib.hooks.Wrap(internal, "HeraSuperchargeBoon", function(base, args, origTraitDa
     origTraitData.UpgradedTraitName = traitData.Name
     thread(HeraTraitRarityPresentation, traitData.Name, args.Stacks, contextArgs.Delay)
 end)
+
+end

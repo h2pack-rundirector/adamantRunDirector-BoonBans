@@ -1,13 +1,7 @@
 local meta = {}
 
 local internal = RunDirectorBoonBans_Internal
-local MODULE_ID = "BoonBans"
-
-local function Log(fmt, ...)
-    local activeStore = internal.store
-    local debugEnabled = activeStore and activeStore.read("DebugMode") == true or false
-    lib.logging.logIf(MODULE_ID, debugEnabled, fmt, ...)
-end
+local function Log() end
 
 local GROUP_CORE       = "Core"
 local GROUP_BONUS      = "Bonus"

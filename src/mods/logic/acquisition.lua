@@ -7,10 +7,6 @@ local SOURCE_FIELD = internal.BoonOfferSourceField or "RunDirectorBoonBans_Offer
 
 internal.BoonOfferSourceField = SOURCE_FIELD
 
-local function IsBoonBansActive()
-    return internal.host.isEnabled()
-end
-
 function internal.IsDuoTraitName(traitName)
     local traitData = traitName and TraitData[traitName]
     return traitData and traitData.IsDuoBoon == true
@@ -101,15 +97,17 @@ function internal.ShouldAdvanceBoonTier(args, traitData, acquiredTrait, godKey)
     return true, "counted"
 end
 
-lib.hooks.Wrap(internal, "CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
-    local button = base(screen, lootData, itemIndex, itemData, args)
+function internal.RegisterAcquisitionHooks(isEnabled)
+    lib.hooks.Wrap(internal, "CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
+        local button = base(screen, lootData, itemIndex, itemData, args)
 
-    if IsBoonBansActive()
-        and button and button.Data
-        and lootData and lootData.Name
-        and internal.IsDuoTraitName(button.Data.Name) then
-        internal.StampUpgradeOfferSource(button.Data, lootData.Name)
-    end
+        if isEnabled()
+            and button and button.Data
+            and lootData and lootData.Name
+            and internal.IsDuoTraitName(button.Data.Name) then
+            internal.StampUpgradeOfferSource(button.Data, lootData.Name)
+        end
 
-    return button
-end)
+        return button
+    end)
+end
