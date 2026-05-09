@@ -68,7 +68,7 @@ local function DrawHammerForceRow(ui, session, scope)
     ui.Text(scope.label)
     ui.SameLine()
     ui.SetCursorPosX(80)
-    lib.widgets.packedDropdown(ui, session, bindAlias, internal.store, {
+    lib.widgets.packedDropdown(ui, session, bindAlias, {
         label = "",
         selectionMode = "singleDisabled",
         noneLabel = "None",

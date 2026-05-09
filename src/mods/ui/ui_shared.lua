@@ -354,7 +354,7 @@ local function GetSingleForcedBoon(scopeKey, session)
         return nil
     end
 
-    local selectedAlias = lib.widgets.getPackedChoiceAlias(session, bindAlias, internal.store, {
+    local selectedAlias = lib.widgets.getPackedChoiceAlias(session, bindAlias, {
         selectionMode = "singleDisabled",
     })
     if not selectedAlias then

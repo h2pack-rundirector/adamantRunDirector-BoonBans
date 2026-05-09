@@ -64,7 +64,7 @@ local function DrawForceRow(ui, session, root, scope)
     ui.Text(scope.label == "Bans" and "Force 1" or scope.label)
     ui.SameLine()
     ui.SetCursorPosX(80)
-    lib.widgets.packedDropdown(ui, session, bindAlias, internal.store, {
+    lib.widgets.packedDropdown(ui, session, bindAlias, {
         label = "",
         selectionMode = "singleDisabled",
         noneLabel = "None",

@@ -32,7 +32,7 @@ function internal.DrawFilteredPackedBanList(ui, session, scopeKey, opts)
     opts = opts or {}
     local filterText = tostring(session and session.view and session.view[uiData.BAN_FILTER_TEXT_ALIAS] or "")
 
-    lib.widgets.packedCheckboxList(ui, session, internal.GetBanRootAlias(scopeKey), internal.store, {
+    lib.widgets.packedCheckboxList(ui, session, internal.GetBanRootAlias(scopeKey), {
         valueColors = opts.valueColors or uiData.BuildPackedBanValueColors(scopeKey),
         slotCount = opts.slotCount or #(uiData.GetScopeBoons(scopeKey) or uiData.EMPTY_LIST),
         filterText = filterText,
