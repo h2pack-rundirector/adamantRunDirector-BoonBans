@@ -75,50 +75,6 @@ local function DrawRegionFilter(ui, session)
     })
 end
 
-local function DrawBanPanel(ui, session, root)
-    internal.DrawBanSearchControls(ui, session, root.primaryScopeKey)
-    ui.SameLine()
-    ui.SetCursorPosX(ui.GetCursorPosX() + 100)
-
-    lib.widgets.button(ui, "Ban All", {
-        id = "npcs_ban_all_" .. root.primaryScopeKey,
-        onClick = function()
-            internal.BanAllGodBans(root.primaryScopeKey, session)
-        end,
-    })
-    ui.SameLine()
-    lib.widgets.button(ui, "Reset", {
-        id = "npcs_reset_" .. root.primaryScopeKey,
-        onClick = function()
-            internal.ResetGodBans(root.primaryScopeKey, session)
-        end,
-    })
-
-    lib.widgets.separator(ui)
-    internal.DrawFilteredPackedBanList(ui, session, root.primaryScopeKey)
-end
-
-local function DrawRarityPanel(ui, session, root)
-    for _, boon in ipairs(uiData.GetScopeBoons(root.primaryScopeKey)) do
-        if uiData.IsRarityEligibleBoon(boon) then
-            local rarityAlias = internal.GetRarityAlias(root.primaryScopeKey, boon.Key)
-            if rarityAlias then
-                ui.AlignTextToFramePadding()
-                ui.Text(uiData.GetBoonText(boon))
-                ui.SameLine()
-                ui.SetCursorPosX(220)
-                lib.widgets.dropdown(ui, session, rarityAlias, {
-                    label = "",
-                    values = { 0, 1, 2, 3 },
-                    displayValues = uiData.RARITY_LABELS,
-                    valueColors = uiData.RARITY_COLORS,
-                    controlWidth = 120,
-                })
-            end
-        end
-    end
-end
-
 function internal.DrawNpcsTab(ui, session)
     DrawRegionFilter(ui, session)
     ui.Spacing()
@@ -156,11 +112,11 @@ function internal.DrawNpcsTab(ui, session)
     ui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if ui.BeginTabItem("Bans") then
-            DrawBanPanel(ui, session, root)
+            internal.DrawBanPanel(ui, session, root.primaryScopeKey, "npcs")
             ui.EndTabItem()
         end
         if root.hasRarity and ui.BeginTabItem("Rarity") then
-            DrawRarityPanel(ui, session, root)
+            internal.DrawRarityPanel(ui, session, root)
             ui.EndTabItem()
         end
         ui.EndTabBar()

@@ -215,7 +215,7 @@ local function RegisterGod(key, data)
     currentSortIndex = currentSortIndex + 1
 end
 
-for _, def in ipairs(baseOlympians) do
+local function RegisterTieredLootRoot(def)
     local tiers       = def.tiers or MAX_GOD_TIERS
     local group       = def.group or GROUP_CORE
     local loot        = def.name .. "Upgrade"
@@ -254,7 +254,7 @@ for _, def in ipairs(baseOlympians) do
     end
 end
 
-for _, def in ipairs(baseWeapons) do
+local function RegisterTieredWeaponRoot(def)
     local loot = "WeaponUpgrade"
     local srcData = { type = "WeaponUpgrade", key = loot }
     local dynamicBits = GetBitCount(srcData, def.key)
@@ -293,22 +293,28 @@ for _, def in ipairs(baseWeapons) do
     end
 end
 
-for _, def in ipairs(baseSingles) do
+local function BuildSingleSourceData(def)
     local sourceType = def.lootSourceType or "UnitSet"
-    local sourceData = {}
 
     if sourceType == "UnitSet" then
-        sourceData = {
+        return {
             type = "UnitSet",
             unitKey = "NPC_" .. def.key,
             unitSetKey = def.unitSetKey or
                 ("NPC_" .. def.key .. "_01")
         }
-    elseif sourceType == "SpellData" then
-        sourceData = { type = "SpellData" }
-    elseif sourceType == "Keepsake" then
-        sourceData = { type = "Keepsake", key = def.key }
     end
+    if sourceType == "SpellData" then
+        return { type = "SpellData" }
+    end
+    if sourceType == "Keepsake" then
+        return { type = "Keepsake", key = def.key }
+    end
+    return {}
+end
+
+local function RegisterSingleRoot(def)
+    local sourceData = BuildSingleSourceData(def)
 
     local dynamicBits = GetBitCount(sourceData, def.key)
 
@@ -323,7 +329,7 @@ for _, def in ipairs(baseSingles) do
     })
 end
 
-for _, def in ipairs(baseSpecials) do
+local function RegisterSpecialRoot(def)
     local dynamicBits = GetBitCount(def.lootSource, def.key)
     RegisterGod(def.metaKey, {
         key = def.key,
@@ -333,6 +339,22 @@ for _, def in ipairs(baseSpecials) do
         packedConfig = { var = def.packedVar, offset = 0, bits = dynamicBits },
         lootSource = def.lootSource
     })
+end
+
+for _, def in ipairs(baseOlympians) do
+    RegisterTieredLootRoot(def)
+end
+
+for _, def in ipairs(baseWeapons) do
+    RegisterTieredWeaponRoot(def)
+end
+
+for _, def in ipairs(baseSingles) do
+    RegisterSingleRoot(def)
+end
+
+for _, def in ipairs(baseSpecials) do
+    RegisterSpecialRoot(def)
 end
 
 

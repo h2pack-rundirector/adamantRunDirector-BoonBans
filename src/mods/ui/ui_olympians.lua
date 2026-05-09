@@ -65,78 +65,12 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawForceRow(ui, session, root, scope)
-    local handle, bindAlias = internal.ResolveBanBinding(scope.key, session)
-    if not handle or not bindAlias then
-        return
-    end
-
-    ui.AlignTextToFramePadding()
-    ui.Text(scope.label)
-    ui.SameLine()
-    ui.SetCursorPosX(80)
-    lib.widgets.packedDropdown(ui, handle, bindAlias, {
-        label = "",
-        selectionMode = "singleDisabled",
-        noneLabel = "None",
-        multipleLabel = "Multiple",
-        displayValues = uiData.BuildPackedBanDisplayValues(scope.key),
-        valueColors = uiData.BuildPackedBanValueColors(scope.key),
-        controlWidth = 220,
-    })
-    internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
-end
-
 local function DrawForcePanel(ui, session, root)
     lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
     internal.DrawConfiguredTierControl(ui, session, root)
     for _, scope in ipairs(root.scopes) do
-        DrawForceRow(ui, session, root, scope)
-    end
-end
-
-local function DrawBanPanel(ui, session, scope)
-    internal.DrawBanSearchControls(ui, session, scope.key)
-    ui.SameLine()
-    ui.SetCursorPosX(ui.GetCursorPosX() + 100)
-
-    lib.widgets.button(ui, "Ban All", {
-        id = "olympians_ban_all_" .. scope.key,
-        onClick = function()
-            internal.BanAllGodBans(scope.key, session)
-        end,
-    })
-    ui.SameLine()
-    lib.widgets.button(ui, "Reset", {
-        id = "olympians_reset_" .. scope.key,
-        onClick = function()
-            internal.ResetGodBans(scope.key, session)
-        end,
-    })
-
-    lib.widgets.separator(ui)
-    internal.DrawFilteredPackedBanList(ui, session, scope.key)
-end
-
-local function DrawRarityPanel(ui, session, root)
-    for _, boon in ipairs(uiData.GetScopeBoons(root.primaryScopeKey)) do
-        if uiData.IsRarityEligibleBoon(boon) then
-            local rarityAlias = internal.GetRarityAlias(root.primaryScopeKey, boon.Key)
-            if rarityAlias then
-                ui.AlignTextToFramePadding()
-                ui.Text(uiData.GetBoonText(boon))
-                ui.SameLine()
-                ui.SetCursorPosX(220)
-                lib.widgets.dropdown(ui, session, rarityAlias, {
-                    label = "",
-                    values = { 0, 1, 2, 3 },
-                    displayValues = uiData.RARITY_LABELS,
-                    valueColors = uiData.RARITY_COLORS,
-                    controlWidth = 120,
-                })
-            end
-        end
+        internal.DrawForceBanRow(ui, session, root, scope)
     end
 end
 
@@ -309,12 +243,12 @@ function internal.DrawOlympiansTab(ui, session)
         end
         for _, scope in ipairs(root.scopes) do
             if ui.BeginTabItem(scope.label) then
-                DrawBanPanel(ui, session, scope)
+                internal.DrawBanPanel(ui, session, scope.key, "olympians")
                 ui.EndTabItem()
             end
         end
         if ui.BeginTabItem("Rarity") then
-            DrawRarityPanel(ui, session, root)
+            internal.DrawRarityPanel(ui, session, root)
             ui.EndTabItem()
         end
         if root.hasBridalGlow and ui.BeginTabItem("Bridal Glow Target") then

@@ -395,6 +395,76 @@ function internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
     })
 end
 
+function internal.DrawForceBanRow(ui, session, root, scope, opts)
+    opts = opts or {}
+    local handle, bindAlias = internal.ResolveBanBinding(scope.key, session)
+    if not handle or not bindAlias then
+        return
+    end
+
+    ui.AlignTextToFramePadding()
+    ui.Text(opts.label or scope.label)
+    ui.SameLine()
+    ui.SetCursorPosX(opts.controlX or 80)
+    lib.widgets.packedDropdown(ui, handle, bindAlias, {
+        label = "",
+        selectionMode = "singleDisabled",
+        noneLabel = "None",
+        multipleLabel = "Multiple",
+        displayValues = uiData.BuildPackedBanDisplayValues(scope.key),
+        valueColors = uiData.BuildPackedBanValueColors(scope.key),
+        controlWidth = opts.controlWidth or 220,
+    })
+
+    if opts.drawRarity ~= false then
+        internal.DrawForcedBoonRarityShortcut(ui, session, root, scope)
+    end
+end
+
+function internal.DrawBanPanel(ui, session, scopeKey, idPrefix)
+    internal.DrawBanSearchControls(ui, session, scopeKey)
+    ui.SameLine()
+    ui.SetCursorPosX(ui.GetCursorPosX() + 100)
+
+    lib.widgets.button(ui, "Ban All", {
+        id = idPrefix .. "_ban_all_" .. scopeKey,
+        onClick = function()
+            internal.BanAllGodBans(scopeKey, session)
+        end,
+    })
+    ui.SameLine()
+    lib.widgets.button(ui, "Reset", {
+        id = idPrefix .. "_reset_" .. scopeKey,
+        onClick = function()
+            internal.ResetGodBans(scopeKey, session)
+        end,
+    })
+
+    lib.widgets.separator(ui)
+    internal.DrawFilteredPackedBanList(ui, session, scopeKey)
+end
+
+function internal.DrawRarityPanel(ui, session, root)
+    for _, boon in ipairs(uiData.GetScopeBoons(root.primaryScopeKey)) do
+        if uiData.IsRarityEligibleBoon(boon) then
+            local rarityAlias = internal.GetRarityAlias(root.primaryScopeKey, boon.Key)
+            if rarityAlias then
+                ui.AlignTextToFramePadding()
+                ui.Text(uiData.GetBoonText(boon))
+                ui.SameLine()
+                ui.SetCursorPosX(220)
+                lib.widgets.dropdown(ui, session, rarityAlias, {
+                    label = "",
+                    values = { 0, 1, 2, 3 },
+                    displayValues = uiData.RARITY_LABELS,
+                    valueColors = uiData.RARITY_COLORS,
+                    controlWidth = 120,
+                })
+            end
+        end
+    end
+end
+
 function uiData.BuildSingleScopeRoot(rootKey, opts)
     opts = opts or {}
     local rootMeta = uiData.GetRootMeta(rootKey) or {}

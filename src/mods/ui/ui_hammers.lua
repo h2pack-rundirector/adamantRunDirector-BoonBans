@@ -58,57 +58,16 @@ local function GetActiveHammerRoot(session)
     return uiData.BuildTierRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
 end
 
-local function DrawHammerForceRow(ui, session, scope)
-    local handle, bindAlias = internal.ResolveBanBinding(scope.key, session)
-    if not handle or not bindAlias then
-        return
-    end
-
-    ui.AlignTextToFramePadding()
-    ui.Text(scope.label)
-    ui.SameLine()
-    ui.SetCursorPosX(80)
-    lib.widgets.packedDropdown(ui, handle, bindAlias, {
-        label = "",
-        selectionMode = "singleDisabled",
-        noneLabel = "None",
-        multipleLabel = "Multiple",
-        displayValues = uiData.BuildPackedBanDisplayValues(scope.key),
-        valueColors = uiData.BuildPackedBanValueColors(scope.key),
-        controlWidth = 200,
-    })
-end
-
 local function DrawHammerForcePanel(ui, session, root)
     lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
     internal.DrawConfiguredTierControl(ui, session, root)
     for _, scope in ipairs(root.scopes) do
-        DrawHammerForceRow(ui, session, scope)
+        internal.DrawForceBanRow(ui, session, root, scope, {
+            controlWidth = 200,
+            drawRarity = false,
+        })
     end
-end
-
-local function DrawHammerBanPanel(ui, session, scope)
-    internal.DrawBanSearchControls(ui, session, scope.key)
-    ui.SameLine()
-    ui.SetCursorPosX(ui.GetCursorPosX() + 100)
-
-    lib.widgets.button(ui, "Ban All", {
-        id = "hammer_ban_all_" .. scope.key,
-        onClick = function()
-            internal.BanAllGodBans(scope.key, session)
-        end,
-    })
-    ui.SameLine()
-    lib.widgets.button(ui, "Reset", {
-        id = "hammer_reset_" .. scope.key,
-        onClick = function()
-            internal.ResetGodBans(scope.key, session)
-        end,
-    })
-
-    lib.widgets.separator(ui)
-    internal.DrawFilteredPackedBanList(ui, session, scope.key)
 end
 
 function internal.DrawHammersTab(ui, session)
@@ -141,7 +100,7 @@ function internal.DrawHammersTab(ui, session)
         end
         for _, scope in ipairs(root.scopes) do
             if ui.BeginTabItem(scope.label) then
-                DrawHammerBanPanel(ui, session, scope)
+                internal.DrawBanPanel(ui, session, scope.key, "hammer")
                 ui.EndTabItem()
             end
         end
