@@ -55,8 +55,8 @@ local function GetActiveRoot(session)
 end
 
 local function DrawForceRow(ui, session, root, scope)
-    local bindAlias = internal.GetBanRootAlias(scope.key)
-    if not bindAlias then
+    local handle, bindAlias = internal.ResolveBanBinding(scope.key, session)
+    if not handle or not bindAlias then
         return
     end
 
@@ -64,7 +64,7 @@ local function DrawForceRow(ui, session, root, scope)
     ui.Text(scope.label == "Bans" and "Force 1" or scope.label)
     ui.SameLine()
     ui.SetCursorPosX(80)
-    lib.widgets.packedDropdown(ui, session, bindAlias, {
+    lib.widgets.packedDropdown(ui, handle, bindAlias, {
         label = "",
         selectionMode = "singleDisabled",
         noneLabel = "None",

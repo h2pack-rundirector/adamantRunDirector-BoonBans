@@ -9,10 +9,6 @@ local function Log(fmt, ...)
     lib.logging.logIf(MODULE_ID, debugEnabled, fmt, ...)
 end
 
--- =============================================================================
--- 1. CONFIGURATION CONSTANTS
--- =============================================================================
-
 local GROUP_CORE       = "Core"
 local GROUP_BONUS      = "Bonus"
 local GROUP_HAMMERS    = "Hammers"
@@ -23,25 +19,20 @@ local GROUP_KEEPSAKES  = "Keepsakes"
 local MAX_GOD_TIERS    = 10
 local MAX_HAMMER_TIERS = 5
 local MAX_HERMES_TIERS = 5
-
--- =============================================================================
--- 2. DYNAMIC BIT COUNTER
--- =============================================================================
+local TIER_BAN_ALIAS   = "Bans"
+internal.TIER_BAN_ALIAS = TIER_BAN_ALIAS
 
 local function GetBitCount(source, defaultPrefix)
     if not source then return 8 end
     local count = 0
 
     if source.type == "LootSet" then
-        -- Step 1: Try to find the God's table first (e.g., LootSetData["Apollo"])
-        -- The files show LootSetData.Apollo exists, and ApolloUpgrade is inside it.
         local container = LootSetData[defaultPrefix]
         local data
 
         if container and container[source.key] then
             data = container[source.key]
         else
-            -- Step 2: Fallback for loose tables (or if inside LootSetData.Loot)
             data = LootSetData[source.key] or (LootSetData.Loot and LootSetData.Loot[source.key])
         end
 
@@ -49,22 +40,18 @@ local function GetBitCount(source, defaultPrefix)
             if data.WeaponUpgrades then count = count + #data.WeaponUpgrades end
             if data.Traits then count = count + #data.Traits end
 
-            -- Handle SubKeys (like Chaos PermanentTraits/TemporaryTraits)
             if source.subKey and data[source.subKey] then
                 count = count + #data[source.subKey]
             end
         end
     elseif source.type == "UnitSet" then
-        -- Count NPC Traits (Arachne, Narcissus, etc.)
         local unit = UnitSetData[source.unitKey]
         if unit and unit[source.unitSetKey] and unit[source.unitSetKey].Traits then
             count = #unit[source.unitSetKey].Traits
         end
     elseif source.type == "SpellData" then
-        -- Count Selene Spells
         for _ in pairs(SpellData) do count = count + 1 end
     elseif source.type == "WeaponUpgrade" then
-        -- Count Hammer Traits by Prefix match
         local data = LootSetData.Loot and LootSetData.Loot.WeaponUpgrade and LootSetData.Loot.WeaponUpgrade.Traits
         if data then
             local prefixes = source.prefixes or { defaultPrefix }
@@ -78,7 +65,6 @@ local function GetBitCount(source, defaultPrefix)
             end
         end
     elseif source.type == "MetaUpgrade" then
-        -- Count Cards/Shrine options (Circe)
         local data = _G[source.dataSource]
         if data then
             for k, _ in pairs(data) do
@@ -96,13 +82,11 @@ local function GetBitCount(source, defaultPrefix)
         end
     end
 
-    -- DEBUG: Keep this to verify the fix in the console!
     Log("BitCheck: %-12s | Type: %-13s | Count: %d",
         defaultPrefix or "??",
         source.type,
         count)
 
-    -- Safety: Ensure we never return 0 bits, or the mask logic will break
     return count > 0 and count or 1
 end
 
@@ -115,11 +99,6 @@ local function GetOrdinal(n)
     if last == 3 then return s .. "rd" end
     return s .. "th"
 end
--- =============================================================================
--- 3. DATA DEFINITIONS
--- =============================================================================
-
--- [A] OLYMPIANS (Auto-generates 4 Tiers)
 local baseOlympians = {
     { name = "Aphrodite",  color = "AphroditeVoice" },
     { name = "Apollo",     color = "ApolloVoice" },
@@ -133,7 +112,6 @@ local baseOlympians = {
     { name = "Hermes",     color = "HermesVoice",      group = GROUP_BONUS, tiers = MAX_HERMES_TIERS }
 }
 
--- [B] WEAPONS (Auto-generates 2 Tiers)
 local baseWeapons = {
     { key = "Staff",  color = "SpringGreen",        display = "Staff" },
     { key = "Dagger", color = "Silver",             display = "Blades" },
@@ -143,7 +121,6 @@ local baseWeapons = {
     { key = "Suit",   color = "DeepSkyBlue",        display = "Coat" },
 }
 
--- [C] SINGLES (NPCs & Simple Items)
 local baseSingles = {
     -- Underworld
     { key = "Arachne",       color = "ArachneVoice",      group = GROUP_UW_NPC },
@@ -164,7 +141,6 @@ local baseSingles = {
     duplicateOf = "Hades", display = "Jeweled Pom", lootSourceType = "Keepsake" }
 }
 
--- [D] SPECIALS (Complex Loot Sources)
 local baseSpecials = {
     {
         metaKey = "ChaosBuffs",
@@ -231,10 +207,6 @@ local baseSpecials = {
     }
 }
 
--- =============================================================================
--- 4. EXPANSION LOGIC
--- =============================================================================
-
 local currentSortIndex = 1
 
 local function RegisterGod(key, data)
@@ -243,7 +215,6 @@ local function RegisterGod(key, data)
     currentSortIndex = currentSortIndex + 1
 end
 
--- PROCESS OLYMPIANS
 for _, def in ipairs(baseOlympians) do
     local tiers       = def.tiers or MAX_GOD_TIERS
     local group       = def.group or GROUP_CORE
@@ -256,9 +227,12 @@ for _, def in ipairs(baseOlympians) do
         key = def.name,
         displayTextKey = def.name,
         colorKey = def.color,
-        packedConfig = { var = "Packed" .. def.name .. "1", offset = 0, bits = dynamicBits },
-        tierStateConfig = { var = "Packed" .. def.name .. "TierState", maxTiers = tiers },
-        defaultConfiguredTiers = math.min(tiers, 5),
+        packedConfig = { var = TIER_BAN_ALIAS, table = def.name .. "Tiers", row = 1, bits = dynamicBits },
+        tierTableConfig = {
+            alias = def.name .. "Tiers",
+            maxRows = tiers,
+            defaultRows = math.min(tiers, 5),
+        },
         lootSource = srcData,
         uiGroup = group,
         tier = 1,
@@ -271,8 +245,7 @@ for _, def in ipairs(baseOlympians) do
             key = key,
             displayTextKey = GetOrdinal(i) .. " " .. def.name,
             colorKey = def.color,
-            -- Tiers share the same bit count as Tier 1
-            packedConfig = { var = "Packed" .. def.name .. i, offset = 0, bits = dynamicBits },
+            packedConfig = { var = TIER_BAN_ALIAS, table = def.name .. "Tiers", row = i, bits = dynamicBits },
             lootSource = srcData,
             duplicateOf = def.name,
             uiGroup = group,
@@ -281,7 +254,6 @@ for _, def in ipairs(baseOlympians) do
     end
 end
 
--- PROCESS WEAPONS
 for _, def in ipairs(baseWeapons) do
     local loot = "WeaponUpgrade"
     local srcData = { type = "WeaponUpgrade", key = loot }
@@ -292,9 +264,12 @@ for _, def in ipairs(baseWeapons) do
         key = def.key,
         displayTextKey = "1st " .. def.display,
         colorKey = def.color,
-        packedConfig = { var = "Packed" .. def.key .. "1", offset = 0, bits = dynamicBits },
-        tierStateConfig = { var = "Packed" .. def.key .. "TierState", maxTiers = tiers },
-        defaultConfiguredTiers = math.min(tiers, 3),
+        packedConfig = { var = TIER_BAN_ALIAS, table = def.key .. "Tiers", row = 1, bits = dynamicBits },
+        tierTableConfig = {
+            alias = def.key .. "Tiers",
+            maxRows = tiers,
+            defaultRows = math.min(tiers, 3),
+        },
         lootSource = srcData,
         uiGroup = GROUP_HAMMERS,
         showPackedValueColors = false,
@@ -308,7 +283,7 @@ for _, def in ipairs(baseWeapons) do
             key = key,
             displayTextKey = GetOrdinal(i) .. " " .. def.display,
             colorKey = def.color,
-            packedConfig = { var = "Packed" .. def.key .. tostring(i), offset = 0, bits = dynamicBits },
+            packedConfig = { var = TIER_BAN_ALIAS, table = def.key .. "Tiers", row = i, bits = dynamicBits },
             lootSource = srcData,
             duplicateOf = def.key,
             uiGroup = GROUP_HAMMERS,
@@ -318,7 +293,6 @@ for _, def in ipairs(baseWeapons) do
     end
 end
 
--- PROCESS SINGLES
 for _, def in ipairs(baseSingles) do
     local sourceType = def.lootSourceType or "UnitSet"
     local sourceData = {}
@@ -349,7 +323,6 @@ for _, def in ipairs(baseSingles) do
     })
 end
 
--- PROCESS SPECIALS
 for _, def in ipairs(baseSpecials) do
     local dynamicBits = GetBitCount(def.lootSource, def.key)
     RegisterGod(def.metaKey, {
@@ -366,9 +339,6 @@ end
 internal.godMeta = meta
 
 
--- =============================================================================
--- 5. RARITY MAPPING
--- =============================================================================
 local rarityEligible = {
     Aphrodite  = "PackedRarityAphrodite",
     Apollo     = "PackedRarityApollo",
@@ -392,11 +362,9 @@ for key, varName in pairs(rarityEligible) do
     end
 end
 
--- 2. Propagate to Tiers/Duplicates
 for _, entry in pairs(meta) do
     if entry.duplicateOf then
         local parent = meta[entry.duplicateOf]
-        -- If parent has rarity enabled, child gets it too
         if parent and parent.rarityVar then
             entry.rarityVar = parent.rarityVar
         end

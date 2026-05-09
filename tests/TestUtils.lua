@@ -151,21 +151,22 @@ local function makeBaseGodMeta()
             tier = 1,
             sortIndex = 1,
             rarityVar = "PackedApolloRarity",
-            packedConfig = { bits = 5, var = "PackedApollo" },
+            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 1 },
+            tierTableConfig = { alias = "ApolloTiers", maxRows = 3, defaultRows = 2 },
         },
         Apollo2 = {
             key = "Apollo2",
             duplicateOf = "Apollo",
             tier = 2,
             uiGroup = "Core",
-            packedConfig = { bits = 5, var = "PackedApollo2" },
+            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 2 },
         },
         Apollo3 = {
             key = "Apollo3",
             duplicateOf = "Apollo",
             tier = 3,
             uiGroup = "Core",
-            packedConfig = { bits = 5, var = "PackedApollo3" },
+            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 3 },
         },
         Circe = {
             key = "Circe",
@@ -361,15 +362,12 @@ function ResetBoonBansUiHarness(opts)
     internal.GetRarityAlias = function(scopeKey, boonKey)
         return scopeKey .. "_" .. boonKey .. "_Rarity"
     end
-    internal.GetBanAlias = function(scopeKey, boonKey)
-        return scopeKey .. "_" .. boonKey .. "_Ban"
-    end
     internal.GetBanRootAlias = function(scopeKey)
-        local rootKey = internal.GetRootKey and internal.GetRootKey(scopeKey) or scopeKey
-        return "Packed" .. tostring(rootKey)
+        local meta = internal.godMeta[scopeKey]
+        return meta and meta.packedConfig and meta.packedConfig.var or nil
     end
     internal.MakeBanAlias = function(packedVar, boonKey)
-        return tostring(packedVar) .. "_" .. tostring(boonKey) .. "_Ban"
+        return tostring(packedVar) .. "__" .. tostring(boonKey)
     end
 
     import = function(path)

@@ -1,7 +1,7 @@
 local internal = RunDirectorBoonBans_Internal
 
 local function BuildPackedStorageNode(item)
-    local bits = internal.GetPackedStorageBits(item.key)
+    local bits = item.bits or internal.GetPackedStorageBits(item.key)
     if not bits then
         return {
             type = "int",
@@ -25,6 +25,53 @@ local function BuildPackedStorageNode(item)
     }
 end
 
+local function BuildTierTableStorageNodes()
+    local nodes = {}
+    local added = {}
+    local tableSpecs = {}
+
+    for metaKey, meta in pairs(internal.godMeta) do
+        local tableConfig = meta and meta.tierTableConfig or nil
+        if tableConfig and not added[tableConfig.alias] then
+            local packedAlias = internal.TIER_BAN_ALIAS
+            local bits = internal.BuildBanBits(metaKey, packedAlias)
+            if #bits > 0 then
+                tableSpecs[#tableSpecs + 1] = {
+                    alias = tableConfig.alias,
+                    maxRows = tableConfig.maxRows,
+                    defaultRows = tableConfig.defaultRows,
+                    packedAlias = packedAlias,
+                    bits = bits,
+                }
+                added[tableConfig.alias] = true
+            end
+        end
+    end
+
+    table.sort(tableSpecs, function(a, b)
+        return a.alias < b.alias
+    end)
+
+    for _, spec in ipairs(tableSpecs) do
+        nodes[#nodes + 1] = {
+            type = "table",
+            alias = spec.alias,
+            minRows = 1,
+            maxRows = spec.maxRows,
+            defaultRows = spec.defaultRows,
+            row = {
+                BuildPackedStorageNode({
+                    key = spec.packedAlias,
+                    default = 0,
+                    bits = spec.bits,
+                }),
+            },
+        }
+    end
+
+    return nodes
+end
+
 function internal.BuildStorage()
     local storage = {
         { type = "int",    alias = "ImproveFirstNBoonRarity",
@@ -46,6 +93,10 @@ function internal.BuildStorage()
         { type = "string", alias = "BridalGlowRoot",                  persist = false, hash = false,
             default = "", maxLen = 64 },
     }
+
+    for _, node in ipairs(BuildTierTableStorageNodes()) do
+        table.insert(storage, node)
+    end
 
     local packedKeys = {}
     for key in pairs(internal.GetOrBuildPackedStorageBits()) do

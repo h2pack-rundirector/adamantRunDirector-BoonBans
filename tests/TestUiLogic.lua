@@ -11,25 +11,25 @@ end
 function TestUiShared:testBuildPackedBanDisplayValuesUsesSpecialLabels()
     local displayValues = self.ui.BuildPackedBanDisplayValues("Apollo")
 
-    lu.assertEquals(displayValues.PackedApollo_Strike_Ban, "Strike")
-    lu.assertEquals(displayValues["PackedApollo_Wave Pair_Ban"], "[D] Wave Pair")
-    lu.assertEquals(displayValues["PackedApollo_Sun Glory_Ban"], "[L] Sun Glory")
-    lu.assertEquals(displayValues.PackedApollo_Infusion_Ban, "[I] Infusion")
+    lu.assertEquals(displayValues.Bans__Strike, "Strike")
+    lu.assertEquals(displayValues["Bans__Wave Pair"], "[D] Wave Pair")
+    lu.assertEquals(displayValues["Bans__Sun Glory"], "[L] Sun Glory")
+    lu.assertEquals(displayValues.Bans__Infusion, "[I] Infusion")
 end
 
 function TestUiShared:testBuildPackedBanValueColorsIncludesOnlySpecialBoons()
     local colors = self.ui.BuildPackedBanValueColors("Apollo")
 
-    lu.assertNil(colors.PackedApollo_Strike_Ban)
-    lu.assertEquals(colors["PackedApollo_Wave Pair_Ban"], { 0.82, 1.0, 0.38, 1.0 })
-    lu.assertEquals(colors["PackedApollo_Sun Glory_Ban"], { 1.0, 0.56, 0.0, 1.0 })
-    lu.assertEquals(colors.PackedApollo_Infusion_Ban, { 1.0, 0.29, 1.0, 1.0 })
+    lu.assertNil(colors.Bans__Strike)
+    lu.assertEquals(colors["Bans__Wave Pair"], { 0.82, 1.0, 0.38, 1.0 })
+    lu.assertEquals(colors["Bans__Sun Glory"], { 1.0, 0.56, 0.0, 1.0 })
+    lu.assertEquals(colors.Bans__Infusion, { 1.0, 0.29, 1.0, 1.0 })
 end
 
 function TestUiShared:testGetScopeSummaryUsesStagedSessionWhenProvided()
     local session = {
         read = function(key)
-            if key == "PackedApollo" then
+            if key == "Bans" then
                 return 9
             end
             return nil

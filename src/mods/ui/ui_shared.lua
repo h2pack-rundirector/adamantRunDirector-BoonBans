@@ -349,12 +349,12 @@ function internal.DrawConfiguredTierControl(ui, session, root)
 end
 
 local function GetSingleForcedBoon(scopeKey, session)
-    local bindAlias = internal.GetBanRootAlias(scopeKey)
-    if not bindAlias then
+    local handle, bindAlias = internal.ResolveBanBinding(scopeKey, session)
+    if not handle or not bindAlias then
         return nil
     end
 
-    local selectedAlias = lib.widgets.getPackedChoiceAlias(session, bindAlias, {
+    local selectedAlias = lib.widgets.getPackedChoiceAlias(handle, bindAlias, {
         selectionMode = "singleDisabled",
     })
     if not selectedAlias then

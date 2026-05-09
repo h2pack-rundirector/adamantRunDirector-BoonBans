@@ -4,7 +4,6 @@ local godMeta = internal.godMeta
 internal.baseBoonCatalog = nil
 internal.packedBanBits = nil
 internal.packedRarityBits = nil
-internal.packedTierStateBits = nil
 internal.packedStorageBits = nil
 
 local bit32 = require("bit32")
@@ -265,12 +264,23 @@ function internal.GetBanRootAlias(scopeKey)
     return packedConfig and packedConfig.var or nil
 end
 
-function internal.GetBanAlias(scopeKey, boonKey)
-    local packedVar = internal.GetBanRootAlias(scopeKey)
-    if not packedVar or not internal.GetOrBuildPackedBanBits()[packedVar] then
-        return nil
+function internal.ResolveBanBinding(scopeKey, session)
+    local meta = godMeta[scopeKey]
+    local packedConfig = meta and meta.packedConfig or nil
+    if not packedConfig then
+        return nil, nil
     end
-    return internal.MakeBanAlias(packedVar, boonKey)
+
+    if packedConfig.table then
+        local owner = session or internal.store
+        local tableHandle = owner and owner.table and owner.table(packedConfig.table) or nil
+        if not tableHandle then
+            error("Boon Bans missing table storage handle for " .. tostring(packedConfig.table), 0)
+        end
+        return tableHandle:rowHandle(packedConfig.row), packedConfig.var
+    end
+
+    return session or internal.store, packedConfig.var
 end
 
 local function GetCatalogSourceKey(metaKey, meta)
@@ -280,26 +290,36 @@ local function GetCatalogSourceKey(metaKey, meta)
     return meta.duplicateOf or metaKey
 end
 
+function internal.BuildBanBits(scopeKey, packedVar)
+    local catalog = internal.GetOrBuildBaseBoonCatalog()
+    local meta = godMeta[scopeKey]
+    local catalogKey = GetCatalogSourceKey(scopeKey, meta)
+    local entry = packedVar and catalog[catalogKey] or nil
+    local bits = {}
+
+    if packedVar and entry and entry.boons and #entry.boons > 0 then
+        for _, boon in ipairs(entry.boons) do
+            bits[#bits + 1] = {
+                alias = internal.MakeBanAlias(packedVar, boon.Key),
+                label = boon.Name,
+                offset = boon.Bit,
+                width = 1,
+                type = "bool",
+                default = false,
+            }
+        end
+    end
+
+    return bits
+end
+
 local function BuildPackedBanBits()
     local bitsByPackedVar = {}
-    local catalog = internal.GetOrBuildBaseBoonCatalog()
 
     for metaKey, meta in pairs(godMeta) do
         local packedVar = meta and meta.packedConfig and meta.packedConfig.var or nil
-        local catalogKey = GetCatalogSourceKey(metaKey, meta)
-        local entry = packedVar and catalog[catalogKey] or nil
-        if packedVar and entry and entry.boons and #entry.boons > 0 then
-            local bits = {}
-            for _, boon in ipairs(entry.boons) do
-                bits[#bits + 1] = {
-                    alias = internal.MakeBanAlias(packedVar, boon.Key),
-                    label = boon.Name,
-                    offset = boon.Bit,
-                    width = 1,
-                    type = "bool",
-                    default = false,
-                }
-            end
+        if packedVar and not (meta.packedConfig and meta.packedConfig.table) then
+            local bits = internal.BuildBanBits(metaKey, packedVar)
             if #bits > 0 then
                 bitsByPackedVar[packedVar] = bits
             end
@@ -350,36 +370,6 @@ function internal.GetOrBuildPackedRarityBits()
     return bitsByPackedVar
 end
 
-local function BuildPackedTierStateBits()
-    local bitsByPackedVar = {}
-    for _, meta in pairs(godMeta) do
-        local tierState = meta and meta.tierStateConfig or nil
-        local maxTiers = tierState and math.floor(tonumber(tierState.maxTiers) or 0) or 0
-        if tierState and type(tierState.var) == "string" and maxTiers > 1 then
-            local bits = {}
-            for tier = 1, maxTiers do
-                bits[#bits + 1] = {
-                    alias = tierState.var .. "__Tier" .. tostring(tier) .. "Disabled",
-                    label = "Tier " .. tostring(tier) .. " Disabled",
-                    offset = tier - 1,
-                    width = 1,
-                    type = "bool",
-                    default = tier > (meta.defaultConfiguredTiers or maxTiers),
-                }
-            end
-            bitsByPackedVar[tierState.var] = bits
-        end
-    end
-    return bitsByPackedVar
-end
-
-function internal.GetOrBuildPackedTierStateBits()
-    if not internal.packedTierStateBits then
-        internal.packedTierStateBits = BuildPackedTierStateBits()
-    end
-    return internal.packedTierStateBits
-end
-
 function internal.GetOrBuildPackedStorageBits()
     if not internal.packedStorageBits then
         local bitsByPackedVar = {}
@@ -387,9 +377,6 @@ function internal.GetOrBuildPackedStorageBits()
             bitsByPackedVar[packedVar] = bits
         end
         for packedVar, bits in pairs(internal.GetOrBuildPackedRarityBits()) do
-            bitsByPackedVar[packedVar] = bits
-        end
-        for packedVar, bits in pairs(internal.GetOrBuildPackedTierStateBits()) do
             bitsByPackedVar[packedVar] = bits
         end
         internal.packedStorageBits = bitsByPackedVar
