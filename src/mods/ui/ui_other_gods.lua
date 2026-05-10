@@ -64,7 +64,7 @@ local function DrawForcePanel(ui, session, root)
     end
 end
 
-function internal.DrawOtherGodsTab(ui, session)
+function internal.DrawOtherGodsTab(ui, session, host)
     local tabs = {}
     for _, root in ipairs(BuildOtherGodRoots(session)) do
         tabs[#tabs + 1] = {
@@ -94,7 +94,7 @@ function internal.DrawOtherGodsTab(ui, session)
         end
         for _, scope in ipairs(root.scopes) do
             if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, scope.key, "other_gods")
+                internal.DrawBanPanel(ui, session, host, scope.key, "other_gods")
                 ui.EndTabItem()
             end
         end

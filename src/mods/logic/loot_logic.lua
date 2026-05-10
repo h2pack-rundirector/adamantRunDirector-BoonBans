@@ -2,17 +2,13 @@
 ---@diagnostic disable: lowercase-global
 
 local internal = RunDirectorBoonBans_Internal
+local banConfigView = internal.banConfigView
 local godMeta = internal.godMeta
-local MODULE_ID = "BoonBans"
 
 internal.godInfo = internal.godInfo or {}
 local godInfo = internal.godInfo
 
 local band = bit32.band
-
-local function Log(access, fmt, ...)
-    lib.logging.logIf(MODULE_ID, access.read("DebugMode") == true, fmt, ...)
-end
 
 local isKeepsakeOffering = false
 local skipIsTraitEligible = false
@@ -24,7 +20,7 @@ local function GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgrad
     return result
 end
 
-local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize, access)
+local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize, host)
     local queue = {}
     local duoLegendaryQueue = {}
 
@@ -48,17 +44,17 @@ local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize, access)
         end
     end
 
-    if access.read("DebugMode") and #queue > 0 then
-        Log(access, "[Micro] PriorityQueue generated. Items: %d", #queue)
+    if #queue > 0 then
+        host.logIf("[Micro] PriorityQueue generated. Items: %d", #queue)
     end
 
     return queue, duoLegendaryQueue
 end
 
-function internal.RegisterLootHooks(access, isEnabled)
+function internal.RegisterLootHooks(host, store)
 
 lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
-    if not isEnabled() then return base(upgradeOptions, lootData, upgradeChoiceData) end
+    if not host.isEnabled() then return base(upgradeOptions, lootData, upgradeChoiceData) end
 
     local currentGodKey = internal.GetGodFromLootsource(lootData.Name)
     local isHammer = (lootData.Name == "WeaponUpgrade")
@@ -66,17 +62,17 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     local count = (internal.GetOrRecalcBoonCounts()[currentGodKey] or 0)
     local targetTier = count + 1
 
-    Log(access, "[Micro] Inspecting Loot: %s (God: %s, Tier: %d)", lootData.Name, tostring(currentGodKey), targetTier)
+    host.logIf("[Micro] Inspecting Loot: %s (God: %s, Tier: %d)", lootData.Name, tostring(currentGodKey), targetTier)
 
     if currentGodKey then
-        if not internal.IsTierConfigured(currentGodKey, targetTier, access) then
-            Log(access, "[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
+        if not banConfigView.IsTierConfigured(currentGodKey, targetTier, store) then
+            host.logIf("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
             return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
 
         local metaKey = (targetTier == 1) and currentGodKey or (currentGodKey .. tostring(targetTier))
         if not godMeta[metaKey] then
-            Log(access, "[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
+            host.logIf("[Micro] Early exit for %s (Tier %d not configured)", tostring(currentGodKey), targetTier)
             return GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
     end
@@ -93,7 +89,7 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
             local info = internal.FindTraitInfo(name, currentGodKey, targetTier)
             local isBanned = false
             if info then
-                local cfg = configCache[info.god] or internal.GetBanConfig(info.god, access)
+                local cfg = configCache[info.god] or banConfigView.GetBanConfig(info.god, store)
                 configCache[info.god] = cfg
                 if band(cfg, info.mask) ~= 0 then
                     isBanned = true
@@ -108,7 +104,7 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
         end
     end
 
-    Log(access, "[Micro] Loot Result: Passed %d, Banned %d", #allowed, #banned)
+    host.logIf("[Micro] Loot Result: Passed %d, Banned %d", #allowed, #banned)
 
     if #allowed == 0 then
         lootData._BoonBans_PendingAllowed = {}
@@ -120,14 +116,12 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
         allowed,
         isHammer,
         GetTotalLootChoices(),
-        access
+        host
     )
 
-    if access.read("DebugMode") then
-        Log(access, "Generated Priority Queue:")
-        for i, queued in ipairs(queue) do
-            Log(access, "  %d. %s (Rarity: %s)", i, queued.ItemName, tostring(queued.rarity))
-        end
+    host.logIf("Generated Priority Queue:")
+    for i, queued in ipairs(queue) do
+        host.logIf("  %d. %s (Rarity: %s)", i, queued.ItemName, tostring(queued.rarity))
     end
 
     lootData._BoonBans_PendingAllowed = allowed
@@ -157,7 +151,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
     local duoLegendaryQueue = lootData._BoonBans_DuoLegendaryQueue
     lootData._BoonBans_DuoLegendaryQueue = nil
 
-    if not isEnabled() then return end
+    if not host.isEnabled() then return end
 
     local currentGodKey = internal.GetGodFromLootsource(lootData.Name)
     local targetTier = 1
@@ -171,9 +165,9 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
         local info = internal.FindTraitInfo(name, nil)
 
         if info and info.god then
-            local rootKey = internal.GetRootKey(info.god)
+            local rootKey = banConfigView.GetRootKey(info.god)
             if godMeta[rootKey] and godMeta[rootKey].rarityVar then
-                if currentGodKey == rootKey and not internal.IsTierConfigured(rootKey, targetTier, access) then
+                if currentGodKey == rootKey and not banConfigView.IsTierConfigured(rootKey, targetTier, store) then
                     goto continue_rarity
                 end
 
@@ -182,17 +176,17 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
                     tierKey = rootKey .. tostring(targetTier)
                 end
 
-                local banConfig = internal.GetBanConfig(tierKey, access)
+                local banConfig = banConfigView.GetBanConfig(tierKey, store)
                 local isBanned = band(banConfig, info.mask) ~= 0
                 if not isBanned then
-                    local rarityValue = internal.GetRarityValue(rootKey, info.bit, access)
+                    local rarityValue = banConfigView.GetRarityValue(rootKey, info.bit, store)
                     if rarityValue > 0 then
                         local rarityMap = { [1] = "Common", [2] = "Rare", [3] = "Epic" }
                         local targetRarity = rarityMap[rarityValue]
                         if targetRarity then
                             item.Rarity = targetRarity
                             item.ForceRarity = true
-                            Log(access, "[Rarity] Forced %s on %s", targetRarity, name)
+                            host.logIf("[Rarity] Forced %s on %s", targetRarity, name)
                         end
                     end
                 end
@@ -253,7 +247,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
             if #lootData.UpgradeOptions < maxChoices then
                 table.insert(lootData.UpgradeOptions, newOption)
                 inOffer[name] = true
-                Log(access, "[Micro] Injected allowed boon '%s' into empty slot", name)
+                host.logIf("[Micro] Injected allowed boon '%s' into empty slot", name)
             else
                 -- Displace the last non-allowed slot: not the protected replacement index, not an allowed boon.
                 local displaceIdx = nil
@@ -268,7 +262,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
                 if displaceIdx then
                     lootData.UpgradeOptions[displaceIdx] = newOption
                     inOffer[name] = true
-                    Log(access, "[Micro] Injected allowed boon '%s' into slot %d (displaced non-allowed option)", name, displaceIdx)
+                    host.logIf("[Micro] Injected allowed boon '%s' into slot %d (displaced non-allowed option)", name, displaceIdx)
                 end
             end
         end
@@ -291,27 +285,27 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
 end)
 
 lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
-    if not isEnabled() or skipIsTraitEligible then return base(traitData, args) end
+    if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
 
     local info = internal.FindTraitInfo(traitData.Name, nil)
     if info then
         if isKeepsakeOffering and info.god == "Hades" and godMeta[info.god].duplicateOf == nil then
             if godInfo["HadesKeepsake"] then
-                local cfg = internal.GetBanConfig("HadesKeepsake", access)
+                local cfg = banConfigView.GetBanConfig("HadesKeepsake", store)
                 if band(cfg, info.mask) ~= 0 then return false end
                 return base(traitData, args)
             end
         end
 
         local infoMeta = godMeta[info.god]
-        local infoRoot = internal.GetRootKey(info.god)
+        local infoRoot = banConfigView.GetRootKey(info.god)
         local infoTier = infoMeta and infoMeta.tier or 1
-        if not internal.IsTierConfigured(infoRoot, infoTier, access) then
+        if not banConfigView.IsTierConfigured(infoRoot, infoTier, store) then
             return base(traitData, args)
         end
 
-        if band(internal.GetBanConfig(info.god, access), info.mask) ~= 0 then
-            Log(access, "[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
+        if band(banConfigView.GetBanConfig(info.god, store), info.mask) ~= 0 then
+            host.logIf("[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
             return false
         end
     end
@@ -326,7 +320,7 @@ lib.hooks.Wrap(internal, "GiveRandomHadesBoonAndBoostBoons", function(base, args
 end)
 
 lib.hooks.Wrap(internal, "HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
-    local targetBoon = access.read("BridalGlowTargetBoon")
+    local targetBoon = store.read("BridalGlowTargetBoon")
     if not targetBoon or targetBoon == "" then
         base(args, origTraitData, contextArgs)
         return

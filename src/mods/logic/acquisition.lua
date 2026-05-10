@@ -2,6 +2,7 @@
 ---@diagnostic disable: lowercase-global
 
 local internal = RunDirectorBoonBans_Internal
+local banConfigView = internal.banConfigView
 
 local SOURCE_FIELD = internal.BoonOfferSourceField or "RunDirectorBoonBans_OfferSourceName"
 
@@ -40,7 +41,7 @@ local function ResolveGodKeyFromSourceName(sourceName)
         return nil
     end
 
-    return internal.GetRootKey and internal.GetRootKey(godKey) or godKey
+    return banConfigView.GetRootKey(godKey)
 end
 
 function internal.ResolveAcquiredGodKey(args, traitData, acquiredTrait)
@@ -59,13 +60,13 @@ function internal.ResolveAcquiredGodKey(args, traitData, acquiredTrait)
     end
 
     if internal.ActiveGodKey then
-        return internal.GetRootKey(internal.ActiveGodKey), "active-god"
+        return banConfigView.GetRootKey(internal.ActiveGodKey), "active-god"
     end
 
     if traitName and not internal.IsDuoTraitName(traitName) and internal.FindTraitInfo then
         local info = internal.FindTraitInfo(traitName, nil)
         if info then
-            return internal.GetRootKey(info.god), "catalog"
+            return banConfigView.GetRootKey(info.god), "catalog"
         end
     end
 
@@ -97,11 +98,11 @@ function internal.ShouldAdvanceBoonTier(args, traitData, acquiredTrait, godKey)
     return true, "counted"
 end
 
-function internal.RegisterAcquisitionHooks(isEnabled)
+function internal.RegisterAcquisitionHooks(host)
     lib.hooks.Wrap(internal, "CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
         local button = base(screen, lootData, itemIndex, itemData, args)
 
-        if isEnabled()
+        if host.isEnabled()
             and button and button.Data
             and lootData and lootData.Name
             and internal.IsDuoTraitName(button.Data.Name) then

@@ -2,6 +2,7 @@ local internal = RunDirectorBoonBans_Internal
 internal.godInfo = internal.godInfo or {}
 local godInfo = internal.godInfo
 local uiData = internal.ui
+local banConfigView = internal.banConfigView
 local GOD_AVAILABILITY_INTEGRATION = "run-director.god-availability"
 
 uiData.EMPTY_LIST = {}
@@ -138,7 +139,7 @@ function uiData.BuildPackedBanValueColors(scopeKey)
     if type(rootAlias) ~= "string" or rootAlias == "" then
         return colors
     end
-    local rootKey = internal.GetRootKey and internal.GetRootKey(scopeKey) or scopeKey
+    local rootKey = banConfigView.GetRootKey(scopeKey)
     local rootMeta = internal.godMeta and internal.godMeta[rootKey] or nil
     if type(rootMeta) == "table" and rootMeta.showPackedValueColors == false then
         uiData.packedBanValueColorsByScope[scopeKey] = colors
@@ -188,7 +189,7 @@ function uiData.GetScopeSummary(scopeKey, session)
     if session then
         local total = 0
         local banned = 0
-        local currentBans = internal.GetBanConfig(scopeKey, session)
+        local currentBans = banConfigView.GetBanConfig(scopeKey, session)
         for _, boon in ipairs(uiData.GetScopeBoons(scopeKey)) do
             total = total + 1
             if bit32.band(currentBans, boon.Mask) ~= 0 then
@@ -216,7 +217,7 @@ function uiData.GetScopeSummary(scopeKey, session)
 end
 
 function uiData.IsScopeCustomized(scopeKey, session)
-    return internal.GetBanConfig(scopeKey, session) ~= 0
+    return banConfigView.GetBanConfig(scopeKey, session) ~= 0
 end
 
 function uiData.GetVisibleBanCount(scopeKey, session)
@@ -251,7 +252,7 @@ function uiData.IsGodPoolFilteringActive()
 end
 
 function uiData.IsGodVisibleInGodPool(godKey)
-    local root = internal.GetRootKey and internal.GetRootKey(godKey) or godKey
+    local root = banConfigView.GetRootKey(godKey)
     return lib.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isAvailable", true, root) ~= false
 end
 
@@ -297,7 +298,7 @@ end
 function uiData.BuildTierScopes(rootKey, session)
     local rootMeta = uiData.GetRootMeta(rootKey) or {}
     local maxTiers = math.max(math.floor(tonumber(rootMeta.maxTiers) or 1), 1)
-    local configuredTiers = internal.GetConfiguredTierCount and internal.GetConfiguredTierCount(rootKey, session) or maxTiers
+    local configuredTiers = banConfigView.GetConfiguredTierCount(rootKey, session)
     if configuredTiers < 1 then configuredTiers = 1 end
     if configuredTiers > maxTiers then configuredTiers = maxTiers end
     local scopes = {}
@@ -339,25 +340,25 @@ function internal.DrawConfiguredTierControl(ui, session, root)
     end
 
     local rootKey = root.primaryScopeKey
-    local maxTiers = internal.GetMaxConfigurableTiers(rootKey)
+    local maxTiers = banConfigView.GetMaxConfigurableTiers(rootKey)
     if maxTiers <= 1 then
         return
     end
 
-    local currentCount = internal.GetConfiguredTierCount(rootKey, session)
+    local currentCount = banConfigView.GetConfiguredTierCount(rootKey, session)
     ui.AlignTextToFramePadding()
     ui.Text("Configured tiers")
     ui.SameLine()
     ui.SetCursorPosX(160)
     if ui.Button("-##configured_tiers_" .. rootKey) and currentCount > 1 then
-        internal.SetConfiguredTierCount(rootKey, currentCount - 1, session)
+        internal.uiUtilities.SetConfiguredTierCount(rootKey, currentCount - 1, session)
         currentCount = currentCount - 1
     end
     ui.SameLine()
     ui.Text(tostring(currentCount))
     ui.SameLine()
     if ui.Button("+##configured_tiers_" .. rootKey) and currentCount < maxTiers then
-        internal.SetConfiguredTierCount(rootKey, currentCount + 1, session)
+        internal.uiUtilities.SetConfiguredTierCount(rootKey, currentCount + 1, session)
     end
     ui.Spacing()
 end
@@ -438,7 +439,7 @@ function internal.DrawForceBanRow(ui, session, root, scope, opts)
     end
 end
 
-function internal.DrawBanPanel(ui, session, scopeKey, idPrefix)
+function internal.DrawBanPanel(ui, session, host, scopeKey, idPrefix)
     internal.DrawBanSearchControls(ui, session, scopeKey)
     ui.SameLine()
     ui.SetCursorPosX(ui.GetCursorPosX() + 100)
@@ -446,14 +447,14 @@ function internal.DrawBanPanel(ui, session, scopeKey, idPrefix)
     lib.widgets.button(ui, "Ban All", {
         id = idPrefix .. "_ban_all_" .. scopeKey,
         onClick = function()
-            internal.BanAllGodBans(scopeKey, session)
+            internal.uiUtilities.BanAllGodBans(scopeKey, session, host)
         end,
     })
     ui.SameLine()
     lib.widgets.button(ui, "Reset", {
         id = idPrefix .. "_reset_" .. scopeKey,
         onClick = function()
-            internal.ResetGodBans(scopeKey, session)
+            internal.uiUtilities.ResetGodBans(scopeKey, session, host)
         end,
     })
 

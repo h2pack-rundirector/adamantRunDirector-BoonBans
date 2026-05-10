@@ -74,7 +74,7 @@ local function DrawRegionFilter(ui, session)
     })
 end
 
-function internal.DrawNpcsTab(ui, session)
+function internal.DrawNpcsTab(ui, session, host)
     DrawRegionFilter(ui, session)
     ui.Spacing()
 
@@ -111,7 +111,7 @@ function internal.DrawNpcsTab(ui, session)
     ui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if ui.BeginTabItem("Bans") then
-            internal.DrawBanPanel(ui, session, root.primaryScopeKey, "npcs")
+            internal.DrawBanPanel(ui, session, host, root.primaryScopeKey, "npcs")
             ui.EndTabItem()
         end
         if root.hasRarity and ui.BeginTabItem("Rarity") then

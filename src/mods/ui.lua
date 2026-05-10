@@ -3,6 +3,7 @@ local internal = RunDirectorBoonBans_Internal
 internal.ui = internal.ui or {}
 local uiData = internal.ui
 
+import("mods/ui/ui_utilities.lua")
 import("mods/ui/ui_shared.lua")
 import("mods/ui/ui_olympians.lua")
 import("mods/ui/ui_hammers.lua")
@@ -49,15 +50,15 @@ function internal.DrawFilteredPackedBanList(ui, session, scopeKey, opts)
     end
 end
 
-function internal.ResetAllControls(session)
-    local bansChanged = internal.ResetAllBans(session)
-    internal.ResetAllRarity(session)
+function internal.ResetAllControls(session, host)
+    local bansChanged = internal.uiUtilities.ResetAllBans(session, host)
+    internal.uiUtilities.ResetAllRarity(session)
     if bansChanged then
-        internal.RecalculateBannedCounts(session)
+        internal.uiUtilities.RecalculateBannedCounts(session, host)
     end
 end
 
-local function DrawSettingsTab(ui, session)
+local function DrawSettingsTab(ui, session, host)
     lib.widgets.dropdown(ui, session, "ImproveFirstNBoonRarity", {
         label = "Force First N Boons to Be Epic",
         values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
@@ -68,47 +69,47 @@ local function DrawSettingsTab(ui, session)
     lib.widgets.confirmButton(ui, "boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
-            local bansChanged = internal.ResetAllBans(session)
+            local bansChanged = internal.uiUtilities.ResetAllBans(session, host)
             if bansChanged then
-                internal.RecalculateBannedCounts(session)
+                internal.uiUtilities.RecalculateBannedCounts(session, host)
             end
         end,
     })
     lib.widgets.confirmButton(ui, "boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
-            internal.ResetAllRarity(session)
+            internal.uiUtilities.ResetAllRarity(session)
         end,
     })
 end
 
-function internal.DrawTab(ui, session)
+function internal.DrawTab(ui, session, host)
     if not ui.BeginTabBar("BoonBansLeanTabs") then
         return false
     end
 
     if ui.BeginTabItem("Olympians") then
-        internal.DrawOlympiansTab(ui, session)
+        internal.DrawOlympiansTab(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Other Gods") then
-        internal.DrawOtherGodsTab(ui, session)
+        internal.DrawOtherGodsTab(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Hammers") then
-        internal.DrawHammersTab(ui, session)
+        internal.DrawHammersTab(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("NPCs") then
-        internal.DrawNpcsTab(ui, session)
+        internal.DrawNpcsTab(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Settings") then
-        DrawSettingsTab(ui, session)
+        DrawSettingsTab(ui, session, host)
         ui.EndTabItem()
     end
 
@@ -116,11 +117,11 @@ function internal.DrawTab(ui, session)
     return false
 end
 
-function internal.DrawQuickContent(ui, session)
+function internal.DrawQuickContent(ui, session, host)
     lib.widgets.confirmButton(ui, "boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            internal.ResetAllControls(session)
+            internal.ResetAllControls(session, host)
         end,
     })
 end

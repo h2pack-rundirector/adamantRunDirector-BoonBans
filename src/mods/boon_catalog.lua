@@ -264,7 +264,7 @@ function internal.GetBanRootAlias(scopeKey)
     return packedConfig and packedConfig.var or nil
 end
 
-function internal.ResolveBanBinding(scopeKey, access)
+function internal.ResolveBanBinding(scopeKey, handle)
     local meta = godMeta[scopeKey]
     local packedConfig = meta and meta.packedConfig or nil
     if not packedConfig then
@@ -272,14 +272,14 @@ function internal.ResolveBanBinding(scopeKey, access)
     end
 
     if packedConfig.table then
-        local tableHandle = access and access.table and access.table(packedConfig.table) or nil
+        local tableHandle = handle and handle.table and handle.table(packedConfig.table) or nil
         if not tableHandle then
             error("Boon Bans missing table storage handle for " .. tostring(packedConfig.table), 0)
         end
         return tableHandle:rowHandle(packedConfig.row), packedConfig.var
     end
 
-    return access, packedConfig.var
+    return handle, packedConfig.var
 end
 
 local function GetCatalogSourceKey(metaKey, meta)

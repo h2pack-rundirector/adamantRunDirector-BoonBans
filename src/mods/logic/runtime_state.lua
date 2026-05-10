@@ -3,19 +3,12 @@
 
 local internal = RunDirectorBoonBans_Internal
 local godMeta = internal.godMeta
-local MODULE_ID = "BoonBans"
+local banConfigView = internal.banConfigView
 
 internal.godInfo = internal.godInfo or {}
 local godInfo = internal.godInfo
 
 local t_insert = table.insert
-
-local function GetRootKey(key)
-    local meta = godMeta[key]
-    if not meta then return key end
-    if meta.duplicateOf then return GetRootKey(meta.duplicateOf) end
-    return key
-end
 
 local function GetSourceColor(name)
     local meta = godMeta[name]
@@ -24,7 +17,7 @@ local function GetSourceColor(name)
     return { inGameColor[1] / 255, inGameColor[2] / 255, inGameColor[3] / 255, inGameColor[4] / 255 }
 end
 
-local function PopulateGodInfo(access)
+local function PopulateGodInfo(host, store)
     for key in pairs(godInfo) do
         godInfo[key] = nil
     end
@@ -61,7 +54,7 @@ local function PopulateGodInfo(access)
                     addBoonToRuntime(key, boon)
                 end
             end
-            internal.UpdateGodStats(key, access)
+            banConfigView.UpdateGodStats(key, store)
         end
     end
 
@@ -73,17 +66,17 @@ local function PopulateGodInfo(access)
                 for _, parentBoon in ipairs(parentEntry.boons) do
                     addBoonToRuntime(key, parentBoon)
                 end
-                internal.UpdateGodStats(key, access)
+                banConfigView.UpdateGodStats(key, store)
             end
         end
     end
 
-    lib.logging.logIf(MODULE_ID, access.read("DebugMode") == true, "[Micro] GodInfo Populated.")
+    host.logIf("[Micro] GodInfo Populated.")
 end
 
-function internal.RegisterRuntimeState(access)
+function internal.RegisterRuntimeState(host, store)
     function internal.GetOrRecalcBoonCounts()
-        local state = internal.GetRunState(access)
+        local state = internal.runtimeUtilities.GetRunState(store)
         if not state then
             return {}
         end
@@ -100,7 +93,7 @@ function internal.RegisterRuntimeState(access)
         local targetEntry = nil
         if filterGodKey then
             for _, entry in ipairs(list) do
-                local entryRoot = GetRootKey(entry.god)
+                local entryRoot = banConfigView.GetRootKey(entry.god)
                 if entryRoot == filterGodKey then
                     targetEntry = entry
                     break
@@ -113,7 +106,7 @@ function internal.RegisterRuntimeState(access)
 
         local targetTier = knownTier
         if not targetTier then
-            local rootKey = GetRootKey(targetEntry.god)
+            local rootKey = banConfigView.GetRootKey(targetEntry.god)
             local currentPicks = (internal.GetOrRecalcBoonCounts()[rootKey] or 0)
             targetTier = currentPicks + 1
         end
@@ -123,7 +116,7 @@ function internal.RegisterRuntimeState(access)
             local meta = godMeta[entry.god]
             local entryTier = meta.tier or 1
             if entryTier == targetTier then
-                if not filterGodKey or GetRootKey(entry.god) == filterGodKey then
+                if not filterGodKey or banConfigView.GetRootKey(entry.god) == filterGodKey then
                     return entry
                 end
             end
@@ -137,17 +130,15 @@ function internal.RegisterRuntimeState(access)
                 if lootKey == "WeaponUpgrade" then
                     local currentWeapon = GetEquippedWeapon()
                     if string.find(currentWeapon, godKey, 1, true) then
-                        return GetRootKey(godKey)
+                        return banConfigView.GetRootKey(godKey)
                     end
                 else
-                    return GetRootKey(godKey)
+                    return banConfigView.GetRootKey(godKey)
                 end
             end
         end
         return nil
     end
 
-    internal.GetRootKey = GetRootKey
-
-    PopulateGodInfo(access)
+    PopulateGodInfo(host, store)
 end

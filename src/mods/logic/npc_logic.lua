@@ -2,26 +2,22 @@
 ---@diagnostic disable: lowercase-global
 
 local internal = RunDirectorBoonBans_Internal
+local banConfigView = internal.banConfigView
 local godInfo = internal.godInfo
-local MODULE_ID = "BoonBans"
 
 local band = bit32.band
 local t_insert = table.insert
 
-function internal.RegisterNpcHooks(access, isEnabled)
+function internal.RegisterNpcHooks(host, store)
     local function GetRunState()
-        return internal.GetRunState(access)
-    end
-
-    local function Log(fmt, ...)
-        lib.logging.logIf(MODULE_ID, access.read("DebugMode") == true, fmt, ...)
+        return internal.runtimeUtilities.GetRunState(store)
     end
 
     lib.hooks.Wrap(internal, "CirceRemoveShrineUpgrades", function(base, args)
-        if not isEnabled() then return base(args) end
+        if not host.isEnabled() then return base(args) end
         local restores = {}
         if godInfo["CirceBNB"] then
-            local configVal = internal.GetBanConfig("CirceBNB", access)
+            local configVal = banConfigView.GetBanConfig("CirceBNB", store)
             for _, vow in ipairs(godInfo["CirceBNB"].boons) do
                 local name = vow.Key
                 local isBanned = band(configVal, vow.Mask) ~= 0
@@ -38,11 +34,11 @@ function internal.RegisterNpcHooks(access, isEnabled)
     end)
 
     lib.hooks.Wrap(internal, "CirceRandomMetaUpgrade", function(base, args)
-        if not isEnabled() then return base(args) end
+        if not host.isEnabled() then return base(args) end
         local restores = {}
         local metaState = GameState.MetaUpgradeState or {}
         if godInfo["CirceCRD"] then
-            local configVal = internal.GetBanConfig("CirceCRD", access)
+            local configVal = banConfigView.GetBanConfig("CirceCRD", store)
             for _, card in ipairs(godInfo["CirceCRD"].boons) do
                 local name = card.Key
                 local isBanned = band(configVal, card.Mask) ~= 0
@@ -59,7 +55,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
     end)
 
     lib.hooks.Wrap(internal, "AddRandomMetaUpgrades", function(base, numCards, args)
-        if not isEnabled() then return base(numCards, args) end
+        if not host.isEnabled() then return base(numCards, args) end
         if numCards and numCards ~= GetTotalHeroTraitValue("PostBossCards") then return base(numCards, args) end
 
         local restores = {}
@@ -67,7 +63,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
         local currentBiome = CurrentRun.ClearedBiomes or 0
         local judgementKey = "Judgement" .. tostring(math.min(currentBiome, 3))
         if godInfo[judgementKey] then
-            local configVal = internal.GetBanConfig(judgementKey, access)
+            local configVal = banConfigView.GetBanConfig(judgementKey, store)
             for _, card in ipairs(godInfo[judgementKey].boons) do
                 local name = card.Key
                 local isBanned = band(configVal, card.Mask) ~= 0
@@ -85,7 +81,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
 
     local function wrapNPCChoice(funcName)
         lib.hooks.Wrap(internal, funcName, function(base, source, args, screen)
-            if isEnabled() and args.UpgradeOptions then
+            if host.isEnabled() and args.UpgradeOptions then
                 local allowed = {}
                 local banned = {}
                 local configCache = {}
@@ -95,7 +91,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
                         local info = internal.FindTraitInfo(option.ItemName, nil)
                         local isBanned = false
                         if info then
-                            local cfg = configCache[info.god] or internal.GetBanConfig(info.god, access)
+                            local cfg = configCache[info.god] or banConfigView.GetBanConfig(info.god, store)
                             configCache[info.god] = cfg
                             if band(cfg, info.mask) ~= 0 then
                                 isBanned = true
@@ -115,7 +111,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
                 end
 
                 if #banned > 0 then
-                    Log("[Micro] NPC Choice (%s): Allowed %d, Banned %d", funcName, #allowed, #banned)
+                    host.logIf("[Micro] NPC Choice (%s): Allowed %d, Banned %d", funcName, #allowed, #banned)
                 end
             end
             return base(source, args, screen)
@@ -124,7 +120,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
 
     lib.hooks.Wrap(internal, "GetEligibleSpells", function(base, screen, args)
         local eligible = base(screen, args)
-        if not isEnabled() then return eligible end
+        if not host.isEnabled() then return eligible end
 
         local allowed = {}
         local banned = {}
@@ -134,7 +130,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
             local info = internal.FindTraitInfo(spellName, nil)
             local isBanned = false
             if info then
-                local cfg = configCache[info.god] or internal.GetBanConfig(info.god, access)
+                local cfg = configCache[info.god] or banConfigView.GetBanConfig(info.god, store)
                 configCache[info.god] = cfg
                 if band(cfg, info.mask) ~= 0 then
                     isBanned = true
@@ -148,7 +144,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
             end
         end
 
-        Log("[Micro] GetEligibleSpells: Allowed %d, Banned %d", #allowed, #banned)
+        host.logIf("[Micro] GetEligibleSpells: Allowed %d, Banned %d", #allowed, #banned)
 
         if #allowed == 0 then return eligible end
 
@@ -156,7 +152,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
     end)
 
     lib.hooks.Wrap(internal, "OpenUpgradeChoiceMenu", function(base, source, args)
-        if isEnabled() and source and source.Name then
+        if host.isEnabled() and source and source.Name then
             internal.ActiveGodKey = internal.GetGodFromLootsource(source.Name)
         end
         base(source, args)
@@ -167,12 +163,12 @@ function internal.RegisterNpcHooks(access, isEnabled)
         local traitData = args and args.TraitData or result
         local state = GetRunState()
 
-        if isEnabled() and state and traitData then
+        if host.isEnabled() and state and traitData then
             local traitName = internal.GetAcquiredTraitName(args, traitData, result)
             local godKey, sourceMode = internal.ResolveAcquiredGodKey(args, traitData, result)
             local shouldAdvance, advanceMode = internal.ShouldAdvanceBoonTier(args, traitData, result, godKey)
 
-            Log(
+            host.logIf(
                 "[Micro] AddTraitToHero: trait=%s god=%s source=%s progression=%s",
                 tostring(traitName),
                 tostring(godKey),
@@ -182,7 +178,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
 
             if shouldAdvance then
                 state.BoonPickCounts[godKey] = (state.BoonPickCounts[godKey] or 0) + 1
-                Log("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
+                host.logIf("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
                     state.BoonPickCounts[godKey])
             end
             internal.ActiveGodKey = nil
@@ -197,7 +193,7 @@ function internal.RegisterNpcHooks(access, isEnabled)
     lib.hooks.Wrap(internal, "GetRarityChances", function(base, loot)
         local chances = base(loot)
         local state = GetRunState()
-        if isEnabled() and CurrentRun and state.ImproveFirstNBoonRarity > 0 and loot.GodLoot then
+        if host.isEnabled() and CurrentRun and state.ImproveFirstNBoonRarity > 0 and loot.GodLoot then
             chances.Common, chances.Rare, chances.Epic = 0.0, 0.0, 1.0
         end
         return chances
@@ -211,4 +207,3 @@ function internal.RegisterNpcHooks(access, isEnabled)
         wrapNPCChoice(func)
     end
 end
-

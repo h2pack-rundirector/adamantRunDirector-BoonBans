@@ -73,12 +73,12 @@ local function DrawForcePanel(ui, session, root)
     end
 end
 
-local function GetBridalGlowEligibleRoots()
+local function GetBridalGlowEligibleRoots(session)
     if uiData.bridalGlowEligibleRoots then
         return uiData.bridalGlowEligibleRoots
     end
 
-    local visibleRoots = GetVisibleOlympianRoots()
+    local visibleRoots = GetVisibleOlympianRoots(session)
     local cached = {}
     for _, root in ipairs(visibleRoots) do
         cached[#cached + 1] = root
@@ -145,7 +145,7 @@ end
 
 local function DrawBridalGlowPanel(ui, session)
     local selectedBoonKey = session.view.BridalGlowTargetBoon or ""
-    local eligibleRoots = GetBridalGlowEligibleRoots()
+    local eligibleRoots = GetBridalGlowEligibleRoots(session)
 
     lib.widgets.text(ui, "Choose the Olympian god and boon pool Bridal Glow can target.")
     lib.widgets.text(ui, uiData.GetCurrentBridalGlowTargetText(session))
@@ -185,19 +185,19 @@ local function DrawBridalGlowPanel(ui, session)
     })
     lib.widgets.separator(ui)
     if ui.Selectable("Random", selectedBoonKey == "") then
-        internal.SetBridalGlowTargetBoonKey(nil, session)
+        internal.uiUtilities.SetBridalGlowTargetBoonKey(nil, session)
         selectedBoonKey = ""
     end
     for _, boon in ipairs(eligibleBoons) do
         if ui.Selectable(boon.BridalGlowLabel, boon.Key == selectedBoonKey) then
-            internal.SetBridalGlowTargetBoonKey(boon.Key, session)
+            internal.uiUtilities.SetBridalGlowTargetBoonKey(boon.Key, session)
             selectedBoonKey = boon.Key
         end
     end
     ui.EndChild()
 end
 
-function internal.DrawOlympiansTab(ui, session)
+function internal.DrawOlympiansTab(ui, session, host)
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(session)
     if #visibleRoots == 0 then
         lib.widgets.text(ui, "No Olympians are currently available.", {
@@ -242,7 +242,7 @@ function internal.DrawOlympiansTab(ui, session)
         end
         for _, scope in ipairs(root.scopes) do
             if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, scope.key, "olympians")
+                internal.DrawBanPanel(ui, session, host, scope.key, "olympians")
                 ui.EndTabItem()
             end
         end

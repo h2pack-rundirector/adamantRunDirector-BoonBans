@@ -20,9 +20,9 @@ local PLUGIN_GUID = _PLUGIN.guid
 ---@class RunDirectorBoonBansInternal
 ---@field standaloneUi StandaloneRuntime|nil
 ---@field BuildStorage fun(): StorageSchema|nil
----@field RegisterHooks fun(store: ManagedStore, host: AuthorHost)|nil
----@field DrawTab fun(imgui: table, session: AuthorSession)|nil
----@field DrawQuickContent fun(imgui: table, session: AuthorSession)|nil
+---@field RegisterHooks fun(host: AuthorHost, store: ManagedStore)|nil
+---@field DrawTab fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
+---@field DrawQuickContent fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
 RunDirectorBoonBans_Internal = RunDirectorBoonBans_Internal or {}
 ---@type RunDirectorBoonBansInternal
 local internal = RunDirectorBoonBans_Internal

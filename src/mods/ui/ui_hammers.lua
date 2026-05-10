@@ -69,7 +69,7 @@ local function DrawHammerForcePanel(ui, session, root)
     end
 end
 
-function internal.DrawHammersTab(ui, session)
+function internal.DrawHammersTab(ui, session, host)
     local tabs = {}
     for _, root in ipairs(BuildHammerRoots(session)) do
         tabs[#tabs + 1] = {
@@ -99,7 +99,7 @@ function internal.DrawHammersTab(ui, session)
         end
         for _, scope in ipairs(root.scopes) do
             if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, scope.key, "hammer")
+                internal.DrawBanPanel(ui, session, host, scope.key, "hammer")
                 ui.EndTabItem()
             end
         end
