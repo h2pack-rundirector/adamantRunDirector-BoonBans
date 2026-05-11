@@ -1,3 +1,5 @@
+-- luacheck: globals bit32 store ResetBoonBansUiHarness import
+
 public = {}
 _PLUGIN = { guid = "test-boon-bans" }
 
@@ -48,6 +50,9 @@ bit32 = {
     end,
     lshift = function(a, n)
         return ((a or 0) * (2 ^ (n or 0))) % (2 ^ 32)
+    end,
+    rshift = function(a, n)
+        return math.floor((a or 0) / (2 ^ (n or 0)))
     end,
 }
 
@@ -147,48 +152,51 @@ local function makeBaseGodMeta()
             key = "Apollo",
             displayTextKey = "1st Apollo",
             uiGroup = "Core",
-            maxTiers = 3,
-            tier = 1,
+            maxBanPools = 3,
+            defaultBanPools = 2,
+            banPoolGroupKey = "Apollo",
+            banPoolIndex = 1,
             sortIndex = 1,
             rarityVar = "PackedApolloRarity",
-            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 1 },
-            tierTableConfig = { alias = "ApolloTiers", maxRows = 3, defaultRows = 2 },
         },
         Apollo2 = {
             key = "Apollo2",
             duplicateOf = "Apollo",
-            tier = 2,
+            banPoolGroupKey = "Apollo",
+            banPoolIndex = 2,
             uiGroup = "Core",
-            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 2 },
         },
         Apollo3 = {
             key = "Apollo3",
             duplicateOf = "Apollo",
-            tier = 3,
+            banPoolGroupKey = "Apollo",
+            banPoolIndex = 3,
             uiGroup = "Core",
-            packedConfig = { bits = 5, var = "Bans", table = "ApolloTiers", row = 3 },
         },
         Circe = {
             key = "Circe",
             displayTextKey = "Circe",
             uiGroup = "Bonus",
+            banPoolGroupKey = "Circe",
+            banPoolIndex = 1,
             sortIndex = 2,
             rarityVar = "PackedCirceRarity",
-            packedConfig = { bits = 3, var = "PackedCirce" },
         },
         AxeHammer = {
             key = "AxeHammer",
             displayTextKey = "Axe Hammer",
             uiGroup = "Hammers",
+            banPoolGroupKey = "AxeHammer",
+            banPoolIndex = 1,
             sortIndex = 3,
-            packedConfig = { bits = 2, var = "PackedAxeHammer" },
         },
         HadesKeepsake = {
             key = "HadesKeepsake",
             display = "Hades Keepsake",
             uiGroup = "Keepsakes",
+            banPoolGroupKey = "HadesKeepsake",
+            banPoolIndex = 1,
             sortIndex = 4,
-            packedConfig = { bits = 2, var = "PackedHadesKeepsake" },
         },
     }
 end
@@ -253,32 +261,12 @@ end
 
 function ResetBoonBansUiHarness(opts)
     opts = opts or {}
-    lib.integrations = lib.integrations or {
-        invoke = function(_, _, fallback)
-            return fallback
-        end,
-    }
-    lib.integrations.invoke = lib.integrations.invoke or function(_, _, fallback)
-        return fallback
-    end
-
-    for key in pairs(storeValues) do
-        storeValues[key] = nil
-    end
-    storeValues.ViewRegion = 4
-    if opts.storeValues then
-        for key, value in pairs(opts.storeValues) do
-            storeValues[key] = value
-        end
-    end
-
-    RunDirectorBoonBans_Internal = {
-        godMeta = deepCopy(opts.godMeta or makeBaseGodMeta()),
-        godInfo = deepCopy(opts.godInfo or makeBaseGodInfo()),
-    }
-
-    local internal = RunDirectorBoonBans_Internal
-    local banConfig = deepCopy(opts.banConfig or {
+    local godDefs = deepCopy(opts.godDefs or makeBaseGodMeta())
+    local catalogEntries = deepCopy(opts.catalogEntries or makeBaseGodInfo())
+    local configuredCounts = deepCopy(opts.configuredCounts or {
+        Apollo = 2,
+    })
+    local banMasks = deepCopy(opts.banMasks or {
         Apollo = 1,
         Apollo2 = 0,
         Apollo3 = 9,
@@ -286,105 +274,94 @@ function ResetBoonBansUiHarness(opts)
         AxeHammer = 0,
         HadesKeepsake = 0,
     })
-    local rarityValues = deepCopy(opts.rarityValues or {})
-    local recalcCalls = 0
 
-    internal.GetRootKey = opts.getRootKey
-    internal.GetBanConfig = function(godKey, session)
-        local meta = internal.godMeta[godKey]
-        local packedVar = meta and meta.packedConfig and meta.packedConfig.var or nil
-        if session and packedVar and type(session.read) == "function" then
-            local staged = session.read(packedVar)
-            if staged ~= nil then
-                return staged
-            end
+    local function resolveGodKey(key)
+        local def = godDefs[key]
+        if def and def.duplicateOf then
+            return resolveGodKey(def.duplicateOf)
         end
-        return banConfig[godKey] or 0
+        return key
     end
-    internal.SetBanConfig = function(godKey, value)
-        local previous = banConfig[godKey] or 0
-        banConfig[godKey] = value
-        return previous ~= value
+
+    local banPools = {
+        BAN_POOL_ALIAS = "Bans",
+    }
+
+    function banPools.getGroupKey(banPoolKey)
+        local def = godDefs[banPoolKey]
+        return def and def.banPoolGroupKey or banPoolKey
     end
-    internal.RecalculateBannedCounts = function()
-        recalcCalls = recalcCalls + 1
+
+    function banPools.getMaxBanPools(banPoolKey)
+        local groupDef = godDefs[banPools.getGroupKey(banPoolKey)]
+        return groupDef and groupDef.maxBanPools or 1
     end
-    internal.UpdateGodStats = function(godKey)
-        local entry = internal.godInfo[godKey]
-        if not entry or not entry.boons then
-            return false
+
+    function banPools.getBanPoolKey(groupKey, banPoolIndex)
+        if banPoolIndex <= 1 then
+            return groupKey
         end
-        local count = 0
-        local cfg = banConfig[godKey] or 0
-        for _, boon in ipairs(entry.boons) do
-            if bit32.band(cfg, boon.Mask) ~= 0 then
-                count = count + 1
-            end
+        return groupKey .. tostring(banPoolIndex)
+    end
+
+    function banPools.getBanPoolIndex(banPoolKey)
+        local def = godDefs[banPoolKey]
+        return def and def.banPoolIndex or 1
+    end
+
+    function banPools.getBanPackedAlias(banPoolKey)
+        if not godDefs[banPoolKey] then
+            return nil
         end
-        entry.banned = count
-        entry.total = #entry.boons
-        return true
+        return banPools.BAN_POOL_ALIAS
     end
-    internal.GetRarityValue = function(godKey, bitIndex)
-        local valueByBit = rarityValues[godKey] or {}
-        return valueByBit[bitIndex] or 0
+
+    function banPools.makeBanAlias(packedAlias, boonKey)
+        return tostring(packedAlias) .. "__" .. tostring(boonKey)
     end
-    internal.SetRarityValue = function(godKey, bitIndex, newValue)
-        rarityValues[godKey] = rarityValues[godKey] or {}
-        local previous = rarityValues[godKey][bitIndex] or 0
-        rarityValues[godKey][bitIndex] = newValue
-        return previous ~= newValue
+
+    function banPools.getRarityAlias(godKey, boonKey)
+        local def = godDefs[godKey]
+        return def and def.rarityVar and (def.rarityVar .. "__" .. boonKey) or nil
     end
-    internal.ResetGodBans = function(godKey)
-        local previous = banConfig[godKey] or 0
-        if previous == 0 then
-            return false
-        end
-        banConfig[godKey] = 0
-        internal.UpdateGodStats(godKey)
-        return true
+
+    function banPools.getBanMask(banPoolKey)
+        local entry = catalogEntries[banPoolKey]
+        return entry and ((2 ^ #entry.boons) - 1) or 0
     end
-    internal.ResetAllBans = function()
-        local changed = false
-        for godKey, value in pairs(banConfig) do
-            if value ~= 0 then
-                banConfig[godKey] = 0
-                internal.UpdateGodStats(godKey)
-                changed = true
-            end
-        end
-        return changed
+
+    local banConfig = {}
+
+    function banConfig.ResolveGodKey(key)
+        return resolveGodKey(key)
     end
-    internal.ResetAllRarity = function()
-        rarityValues = {}
-        return true
+
+    function banConfig.GetConfiguredBanPoolCount(godKey)
+        return configuredCounts[resolveGodKey(godKey)] or 1
     end
-    internal.GetRarityAlias = function(scopeKey, boonKey)
-        return scopeKey .. "_" .. boonKey .. "_Rarity"
+
+    function banConfig.IsBanPoolCustomized(banPoolKey)
+        return (banMasks[banPoolKey] or 0) ~= 0
     end
-    internal.GetBanRootAlias = function(scopeKey)
-        local meta = internal.godMeta[scopeKey]
-        return meta and meta.packedConfig and meta.packedConfig.var or nil
-    end
-    internal.MakeBanAlias = function(packedVar, boonKey)
-        return tostring(packedVar) .. "__" .. tostring(boonKey)
-    end
+
+    RunDirectorBoonBans_Internal = {
+        godDefs = godDefs,
+        catalog = {
+            entries = catalogEntries,
+        },
+        banPools = banPools,
+        banConfig = banConfig,
+        godMeta = godDefs,
+        godInfo = catalogEntries,
+    }
 
     import = function(path)
-        dofile("src/" .. path)
+        return dofile("src/" .. path)
     end
 
-    dofile("src/mods/ui.lua")
-
-    for godKey, _ in pairs(internal.godInfo) do
-        internal.UpdateGodStats(godKey)
-    end
-
-    return internal.ui, internal, {
-        banConfig = banConfig,
-        rarityValues = rarityValues,
-        getRecalcCalls = function()
-            return recalcCalls
-        end,
+    local uiModel = import("mods/ui/ui_model.lua")
+    return uiModel, RunDirectorBoonBans_Internal, {
+        configuredCounts = configuredCounts,
+        banMasks = banMasks,
     }
 end

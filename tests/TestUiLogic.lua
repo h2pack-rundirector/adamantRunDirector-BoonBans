@@ -1,14 +1,16 @@
+-- luacheck: globals TestUiModel ResetBoonBansUiHarness
+
 local lu = require("luaunit")
 
 require("tests/TestUtils")
 
-TestUiShared = {}
+TestUiModel = {}
 
-function TestUiShared:setUp()
+function TestUiModel:setUp()
     self.ui, self.internal, self.state = ResetBoonBansUiHarness()
 end
 
-function TestUiShared:testBuildPackedBanDisplayValuesUsesSpecialLabels()
+function TestUiModel:testBuildPackedBanDisplayValuesUsesSpecialLabels()
     local displayValues = self.ui.BuildPackedBanDisplayValues("Apollo")
 
     lu.assertEquals(displayValues.Bans__Strike, "Strike")
@@ -17,7 +19,7 @@ function TestUiShared:testBuildPackedBanDisplayValuesUsesSpecialLabels()
     lu.assertEquals(displayValues.Bans__Infusion, "[I] Infusion")
 end
 
-function TestUiShared:testBuildPackedBanValueColorsIncludesOnlySpecialBoons()
+function TestUiModel:testBuildPackedBanValueColorsIncludesOnlySpecialBoons()
     local colors = self.ui.BuildPackedBanValueColors("Apollo")
 
     lu.assertNil(colors.Bans__Strike)
@@ -26,23 +28,7 @@ function TestUiShared:testBuildPackedBanValueColorsIncludesOnlySpecialBoons()
     lu.assertEquals(colors.Bans__Infusion, { 1.0, 0.29, 1.0, 1.0 })
 end
 
-function TestUiShared:testGetScopeSummaryUsesStagedSessionWhenProvided()
-    local session = {
-        read = function(key)
-            if key == "Bans" then
-                return 9
-            end
-            return nil
-        end,
-    }
-
-    local banned, total = self.ui.GetScopeSummary("Apollo", session)
-
-    lu.assertEquals(banned, 2)
-    lu.assertEquals(total, 5)
-end
-
-function TestUiShared:testGetVisibleBanCountUsesTextFilterOnly()
+function TestUiModel:testGetVisibleBanCountUsesTextFilterOnly()
     local session = {
         view = {
             BanFilterText = "cast",
@@ -53,71 +39,32 @@ function TestUiShared:testGetVisibleBanCountUsesTextFilterOnly()
     lu.assertEquals(self.ui.GetVisibleBanCount("Circe", session), 0)
 end
 
-function TestUiShared:testGetCurrentBridalGlowTargetTextUsesEligibleBoon()
-    local session = {
-        view = {
-            BridalGlowTargetBoon = "Hex",
+function TestUiModel:testBuildBanPoolRootUsesConfiguredPoolCount()
+    local root = self.ui.BuildBanPoolRoot("Apollo", {})
+
+    lu.assertEquals(root.label, "Apollo")
+    lu.assertEquals(root.primaryGodKey, "Apollo")
+    lu.assertEquals(root.maxBanPools, 3)
+    lu.assertEquals(#root.banPools, 2)
+    lu.assertEquals(root.banPools[1], {
+        key = "Apollo",
+        label = "1st",
+    })
+    lu.assertEquals(root.banPools[2], {
+        key = "Apollo2",
+        label = "2nd",
+    })
+end
+
+function TestUiModel:testBuildBanPoolRootFallsBackToSinglePool()
+    local root = self.ui.BuildBanPoolRoot("Circe", {})
+
+    lu.assertEquals(root.label, "Circe")
+    lu.assertEquals(root.maxBanPools, 1)
+    lu.assertEquals(root.banPools, {
+        {
+            key = "Circe",
+            label = "Bans",
         },
-    }
-
-    lu.assertEquals(self.ui.GetCurrentBridalGlowTargetText(session), "Current Target: Random")
-
-    self.internal.godInfo.Circe.boonByKey.Hex.IsBridalGlowEligible = true
-    lu.assertEquals(self.ui.GetCurrentBridalGlowTargetText(session), "Current Target: Hex")
-end
-
-function TestUiShared:testGetRootDisplayLabelDropsTierPrefixForTieredRoots()
-    lu.assertEquals(
-        self.ui.GetRootDisplayLabel("Apollo", self.internal.godMeta.Apollo),
-        "Apollo"
-    )
-    lu.assertEquals(
-        self.ui.GetRootDisplayLabel("Circe", self.internal.godMeta.Circe),
-        "Circe"
-    )
-end
-
-function TestUiShared:testGodPoolFilteringUsesIntegrationInvoke()
-    local calls = {}
-    lib.integrations.invoke = function(id, methodName, fallback, godKey)
-        table.insert(calls, {
-            id = id,
-            methodName = methodName,
-            fallback = fallback,
-            godKey = godKey,
-        })
-        if methodName == "isActive" then
-            return true
-        end
-        if methodName == "isAvailable" then
-            return godKey ~= "Apollo"
-        end
-        return fallback
-    end
-
-    lu.assertTrue(self.ui.IsGodPoolFilteringActive())
-    lu.assertFalse(self.ui.IsGodVisibleInGodPool("Apollo"))
-    lu.assertTrue(self.ui.IsGodVisibleInGodPool("Zeus"))
-
-    lu.assertEquals(calls[1], {
-        id = "run-director.god-availability",
-        methodName = "isActive",
-        fallback = false,
-        godKey = nil,
     })
-    lu.assertEquals(calls[2], {
-        id = "run-director.god-availability",
-        methodName = "isAvailable",
-        fallback = true,
-        godKey = "Apollo",
-    })
-end
-
-function TestUiShared:testGodPoolFilteringFallsBackInactiveWhenIntegrationMissing()
-    lib.integrations.invoke = function(_, _, fallback)
-        return fallback
-    end
-
-    lu.assertFalse(self.ui.IsGodPoolFilteringActive())
-    lu.assertTrue(self.ui.IsGodVisibleInGodPool("Apollo"))
 end

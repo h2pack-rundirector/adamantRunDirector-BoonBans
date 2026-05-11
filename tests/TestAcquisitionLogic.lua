@@ -4,19 +4,58 @@ local lu = require("luaunit")
 
 TestAcquisitionLogic = {}
 
+local function MakeRunState()
+    local values = {}
+    local maps = {}
+    local counts = {}
+
+    return {
+        scratch = {
+            clear = function(name)
+                values[name] = nil
+                maps[name] = nil
+            end,
+            set = function(name, value)
+                values[name] = value
+            end,
+            get = function(name)
+                return values[name]
+            end,
+            mapSet = function(name, key, value)
+                maps[name] = maps[name] or {}
+                maps[name][key] = value
+            end,
+            mapGet = function(name, key)
+                return maps[name] and maps[name][key] or nil
+            end,
+        },
+        hasCurrentRun = function()
+            return true
+        end,
+        recordAcquisition = function(godKey)
+            counts[godKey] = (counts[godKey] or 0) + 1
+            return counts[godKey]
+        end,
+        getCount = function(godKey)
+            return counts[godKey] or 0
+        end,
+        consumeForcedRarity = function()
+            return true
+        end,
+    }
+end
+
 function TestAcquisitionLogic:setUp()
     public = {}
     _PLUGIN = { guid = "test-boon-bans-acquisition" }
 
+    self.wraps = {}
     lib = {
-        isModuleEnabled = function()
-            return true
-        end,
         hooks = {
-            Wrap = function() end,
-        },
-        logging = {
-            logIf = function() end,
+            Wrap = function(_, funcName, ...)
+                local args = { ... }
+                self.wraps[funcName] = args[#args]
+            end,
         },
     }
 
@@ -26,107 +65,98 @@ function TestAcquisitionLogic:setUp()
     }
 
     RunDirectorBoonBans_Internal = {
-        definition = {
-            id = "BoonBans",
-            modpack = "RunDirector",
-        },
-        store = {
-            read = function()
-                return false
+        banConfig = {
+            ResolveGodKey = function(key)
+                return key
             end,
         },
-        godMeta = {
-            Zeus = {
-                key = "Zeus",
-                lootSource = { key = "ZeusUpgrade" },
-            },
-            Apollo = {
-                key = "Apollo",
-                lootSource = { key = "ApolloUpgrade" },
-            },
-        },
-        godInfo = {
-            traitLookup = {
-                ZeusStrikeBoon = {
-                    { god = "Zeus" },
-                },
-                ReboundingSparkBoon = {
-                    { god = "Apollo" },
-                },
-            },
-        },
     }
 
-    self.internal = RunDirectorBoonBans_Internal
-    self.internal.GetGodFromLootsource = function(lootKey)
-        if lootKey == "ZeusUpgrade" then
-            return "Zeus"
-        end
-        if lootKey == "ApolloUpgrade" then
-            return "Apollo"
-        end
-        return nil
-    end
-    self.internal.GetRootKey = function(key)
-        return key
-    end
-    self.internal.FindTraitInfo = function(traitName)
-        local list = self.internal.godInfo.traitLookup[traitName]
-        return list and list[1] or nil
-    end
+    self.runState = MakeRunState()
+    self.host = {
+        isEnabled = function()
+            return true
+        end,
+        logIf = function() end,
+    }
+    self.banResolver = {
+        getGodFromLootsource = function(lootKey)
+            if lootKey == "ZeusUpgrade" then
+                return "Zeus"
+            end
+            if lootKey == "ApolloUpgrade" then
+                return "Apollo"
+            end
+            return nil
+        end,
+        getTraitGodKey = function(traitName)
+            if traitName == "ZeusStrikeBoon" then
+                return "Zeus"
+            end
+            return nil
+        end,
+    }
 
     dofile("src/mods/logic/acquisition.lua")
+    RunDirectorBoonBans_Internal.RegisterAcquisitionHooks(self.host, self.runState, self.banResolver)
 end
 
-function TestAcquisitionLogic:testResolveAcquiredGodKeyPrefersStampedDuoSource()
-    self.internal.ActiveGodKey = "Apollo"
-
-    local acquiredTrait = {
-        Name = "ReboundingSparkBoon",
-        [self.internal.BoonOfferSourceField] = "ZeusUpgrade",
-    }
-
-    local godKey, sourceMode = self.internal.ResolveAcquiredGodKey({ FromLoot = true }, acquiredTrait, acquiredTrait)
-
-    lu.assertEquals(godKey, "Zeus")
-    lu.assertEquals(sourceMode, "stamped-source")
-end
-
-function TestAcquisitionLogic:testResolveAcquiredGodKeyFallsBackToCatalogForNonDuo()
-    local acquiredTrait = {
-        Name = "ZeusStrikeBoon",
-    }
-
-    local godKey, sourceMode = self.internal.ResolveAcquiredGodKey({}, acquiredTrait, acquiredTrait)
-
-    lu.assertEquals(godKey, "Zeus")
-    lu.assertEquals(sourceMode, "catalog")
-end
-
-function TestAcquisitionLogic:testShouldAdvanceBoonTierRequiresLootAcquisitionWithoutSkipFlags()
-    local acquiredTrait = {
-        Name = "ZeusStrikeBoon",
-    }
-
-    local shouldAdvance, reason = self.internal.ShouldAdvanceBoonTier({}, acquiredTrait, acquiredTrait, "Zeus")
-    lu.assertFalse(shouldAdvance)
-    lu.assertEquals(reason, "not-from-loot")
-
-    shouldAdvance, reason = self.internal.ShouldAdvanceBoonTier(
-        { FromLoot = true, SkipActivatedTraitUpdate = true },
-        acquiredTrait,
-        acquiredTrait,
-        "Zeus"
+function TestAcquisitionLogic:testDuoAcquisitionUsesRememberedOfferSource()
+    self.wraps.CreateUpgradeChoiceButton(
+        function()
+            return { Data = { Name = "ReboundingSparkBoon" } }
+        end,
+        nil,
+        { Name = "ZeusUpgrade" }
     )
-    lu.assertFalse(shouldAdvance)
-    lu.assertEquals(reason, "skip-activated-update")
 
-    shouldAdvance, reason = self.internal.ShouldAdvanceBoonTier(
-        { FromLoot = true },
-        acquiredTrait,
-        acquiredTrait,
-        "Zeus"
+    self.wraps.OpenUpgradeChoiceMenu(function() end, { Name = "ApolloUpgrade" })
+    self.wraps.CreateUpgradeChoiceButton(
+        function()
+            return { Data = { Name = "ReboundingSparkBoon" } }
+        end,
+        nil,
+        { Name = "ZeusUpgrade" }
     )
-    lu.assertTrue(shouldAdvance)
-    lu.assertEquals(reason, "counted")
+
+    self.wraps.AddTraitToHero(function()
+        return { Name = "ReboundingSparkBoon" }
+    end, {
+        FromLoot = true,
+    })
+
+    lu.assertEquals(self.runState.getCount("Zeus"), 1)
+    lu.assertEquals(self.runState.getCount("Apollo"), 0)
+end
+
+function TestAcquisitionLogic:testNonDuoFallsBackToCatalog()
+    self.wraps.AddTraitToHero(function()
+        return { Name = "ZeusStrikeBoon" }
+    end, {
+        FromLoot = true,
+    })
+
+    lu.assertEquals(self.runState.getCount("Zeus"), 1)
+end
+
+function TestAcquisitionLogic:testAcquisitionOnlyAdvancesForLootWithoutSkipFlags()
+    self.wraps.AddTraitToHero(function()
+        return { Name = "ZeusStrikeBoon" }
+    end, {})
+    lu.assertEquals(self.runState.getCount("Zeus"), 0)
+
+    self.wraps.AddTraitToHero(function()
+        return { Name = "ZeusStrikeBoon" }
+    end, {
+        FromLoot = true,
+        SkipActivatedTraitUpdate = true,
+    })
+    lu.assertEquals(self.runState.getCount("Zeus"), 0)
+
+    self.wraps.AddTraitToHero(function()
+        return { Name = "ZeusStrikeBoon" }
+    end, {
+        FromLoot = true,
+    })
+    lu.assertEquals(self.runState.getCount("Zeus"), 1)
 end
