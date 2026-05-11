@@ -2,18 +2,37 @@
 ---@diagnostic disable: lowercase-global
 
 local internal = RunDirectorBoonBans_Internal
-local banConfigView = internal.banConfigView
+local banConfig = internal.banConfig
 
-local SOURCE_FIELD = internal.BoonOfferSourceField or "RunDirectorBoonBans_OfferSourceName"
+local SOURCE_FIELD = "RunDirectorBoonBans_OfferSourceName"
 
-internal.BoonOfferSourceField = SOURCE_FIELD
-
-function internal.IsDuoTraitName(traitName)
+local function IsDuoTraitName(traitName)
     local traitData = traitName and TraitData[traitName]
     return traitData and traitData.IsDuoBoon == true
 end
 
-function internal.GetAcquiredTraitName(args, traitData, acquiredTrait)
+local function StampUpgradeOfferSource(upgradeData, sourceName)
+    if type(upgradeData) ~= "table" or type(sourceName) ~= "string" or sourceName == "" then
+        return false
+    end
+    upgradeData[SOURCE_FIELD] = sourceName
+    return true
+end
+
+local function ResolveGodKeyFromSourceName(sourceName, banResolver)
+    if type(sourceName) ~= "string" or sourceName == "" then
+        return nil
+    end
+
+    local godKey = banResolver.getGodFromLootsource(sourceName)
+    if not godKey then
+        return nil
+    end
+
+    return banConfig.ResolveGodKey(godKey)
+end
+
+local function GetAcquiredTraitName(args, traitData, acquiredTrait)
     if acquiredTrait and acquiredTrait.Name then
         return acquiredTrait.Name
     end
@@ -23,58 +42,38 @@ function internal.GetAcquiredTraitName(args, traitData, acquiredTrait)
     return args and args.TraitName or nil
 end
 
-function internal.StampUpgradeOfferSource(upgradeData, sourceName)
-    if type(upgradeData) ~= "table" or type(sourceName) ~= "string" or sourceName == "" then
-        return false
-    end
-    upgradeData[SOURCE_FIELD] = sourceName
-    return true
-end
-
-local function ResolveGodKeyFromSourceName(sourceName)
-    if type(sourceName) ~= "string" or sourceName == "" then
-        return nil
-    end
-
-    local godKey = internal.GetGodFromLootsource and internal.GetGodFromLootsource(sourceName) or nil
-    if not godKey then
-        return nil
-    end
-
-    return banConfigView.GetRootKey(godKey)
-end
-
-function internal.ResolveAcquiredGodKey(args, traitData, acquiredTrait)
-    local traitName = internal.GetAcquiredTraitName(args, traitData, acquiredTrait)
+local function ResolveAcquiredGodKey(args, traitData, acquiredTrait, runState, banResolver)
+    local traitName = GetAcquiredTraitName(args, traitData, acquiredTrait)
 
     local stampedSourceName = (acquiredTrait and acquiredTrait[SOURCE_FIELD])
         or (traitData and traitData[SOURCE_FIELD])
-    local stampedGodKey = ResolveGodKeyFromSourceName(stampedSourceName)
+    local stampedGodKey = ResolveGodKeyFromSourceName(stampedSourceName, banResolver)
     if stampedGodKey then
         return stampedGodKey, "stamped-source"
     end
 
-    local argsGodKey = ResolveGodKeyFromSourceName(args and args.SourceName or nil)
+    local argsGodKey = ResolveGodKeyFromSourceName(args and args.SourceName or nil, banResolver)
     if argsGodKey then
         return argsGodKey, "args-source"
     end
 
-    if internal.ActiveGodKey then
-        return banConfigView.GetRootKey(internal.ActiveGodKey), "active-god"
+    local activeGodKey = runState and runState.getActiveGod() or nil
+    if activeGodKey then
+        return banConfig.ResolveGodKey(activeGodKey), "active-god"
     end
 
-    if traitName and not internal.IsDuoTraitName(traitName) and internal.FindTraitInfo then
-        local info = internal.FindTraitInfo(traitName, nil)
-        if info then
-            return banConfigView.GetRootKey(info.god), "catalog"
+    if traitName and not IsDuoTraitName(traitName) then
+        local godKey = banResolver.getTraitGodKey(traitName)
+        if godKey then
+            return godKey, "catalog"
         end
     end
 
     return nil, "unresolved"
 end
 
-function internal.ShouldAdvanceBoonTier(args, traitData, acquiredTrait, godKey)
-    local traitName = internal.GetAcquiredTraitName(args, traitData, acquiredTrait)
+local function ShouldAdvanceBanPool(args, traitData, acquiredTrait, godKey)
+    local traitName = GetAcquiredTraitName(args, traitData, acquiredTrait)
 
     if not godKey then
         return false, "no-god-key"
@@ -98,17 +97,55 @@ function internal.ShouldAdvanceBoonTier(args, traitData, acquiredTrait, godKey)
     return true, "counted"
 end
 
-function internal.RegisterAcquisitionHooks(host)
+function internal.RegisterAcquisitionHooks(host, runState, banResolver)
     lib.hooks.Wrap(internal, "CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
         local button = base(screen, lootData, itemIndex, itemData, args)
 
         if host.isEnabled()
             and button and button.Data
             and lootData and lootData.Name
-            and internal.IsDuoTraitName(button.Data.Name) then
-            internal.StampUpgradeOfferSource(button.Data, lootData.Name)
+            and IsDuoTraitName(button.Data.Name) then
+            StampUpgradeOfferSource(button.Data, lootData.Name)
         end
 
         return button
+    end)
+
+    lib.hooks.Wrap(internal, "OpenUpgradeChoiceMenu", function(base, source, args)
+        if host.isEnabled() and source and source.Name then
+            runState.setActiveGod(banResolver.getGodFromLootsource(source.Name))
+        end
+        base(source, args)
+    end)
+
+    lib.hooks.Wrap(internal, "AddTraitToHero", function(base, args)
+        local result = base(args)
+        local traitData = args and args.TraitData or result
+
+        if host.isEnabled() and runState.hasCurrentRun() and traitData then
+            local traitName = GetAcquiredTraitName(args, traitData, result)
+            local godKey, sourceMode = ResolveAcquiredGodKey(args, traitData, result, runState, banResolver)
+            local shouldAdvance, advanceMode = ShouldAdvanceBanPool(args, traitData, result, godKey)
+
+            host.logIf(
+                "[Micro] AddTraitToHero: trait=%s god=%s source=%s progression=%s",
+                tostring(traitName),
+                tostring(godKey),
+                tostring(sourceMode),
+                tostring(advanceMode)
+            )
+
+            if shouldAdvance then
+                local newCount = runState.recordAcquisition(godKey)
+                host.logIf("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
+                    newCount or 0)
+            end
+            runState.clearActiveGod()
+
+            if shouldAdvance then
+                runState.consumeForcedRarity(traitName)
+            end
+        end
+        return result
     end)
 end

@@ -19,7 +19,6 @@ local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
 ---@class RunDirectorBoonBansInternal
 ---@field standaloneUi StandaloneRuntime|nil
----@field BuildStorage fun(): StorageSchema|nil
 ---@field RegisterHooks fun(host: AuthorHost, store: ManagedStore)|nil
 ---@field DrawTab fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
 ---@field DrawQuickContent fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
@@ -45,8 +44,6 @@ end
 
 local function init()
     import_as_fallback(rom.game)
-    import("mods/god_meta.lua")
-    import("mods/boon_catalog.lua")
     import("mods/data.lua")
     import("mods/logic.lua")
     import("mods/ui.lua")
@@ -60,7 +57,7 @@ local function init()
             id = MODULE_ID,
             name = "Boon Bans",
             tooltip = "Ban boon offerings and force rarity behavior.",
-            storage = internal.BuildStorage(),
+            storage = internal.storage,
         },
         registerHooks = internal.RegisterHooks,
         drawTab = internal.DrawTab,

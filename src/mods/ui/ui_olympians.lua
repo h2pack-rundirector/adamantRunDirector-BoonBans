@@ -1,7 +1,15 @@
 local internal = RunDirectorBoonBans_Internal
-local uiData = internal.ui
+local deps = ...
+local uiData = deps.model
+local uiActions = deps.actions
+local components = deps.components
+local banConfig = internal.banConfig
 local ACTIVE_OLYMPIAN_ROOT_ALIAS = "ActiveOlympianRoot"
 local BRIDAL_GLOW_ROOT_ALIAS = "BridalGlowRoot"
+local GOD_AVAILABILITY_INTEGRATION = "run-director.god-availability"
+local EMPTY_LIST = {}
+local bridalGlowEligibleRoots = nil
+local bridalGlowBoonsByRoot = {}
 
 local OLYMPIAN_ROOT_KEYS = {
     "Aphrodite",
@@ -17,29 +25,38 @@ local OLYMPIAN_ROOT_KEYS = {
 
 local function BuildOlympianRoots(session)
     local roots = {}
-    for _, rootKey in ipairs(OLYMPIAN_ROOT_KEYS) do
-        roots[#roots + 1] = uiData.BuildTierRoot(rootKey, {
+    for _, godKey in ipairs(OLYMPIAN_ROOT_KEYS) do
+        roots[#roots + 1] = uiData.BuildBanPoolRoot(godKey, {
             session = session,
-            hasBridalGlow = rootKey == "Hera",
+            hasBridalGlow = godKey == "Hera",
         })
     end
     return roots
 end
 
 local function IsRootCustomized(root, session)
-    for _, scope in ipairs(root.scopes) do
-        if uiData.IsScopeCustomized(scope.key, session) then
+    for _, banPool in ipairs(root.banPools) do
+        if banConfig.IsBanPoolCustomized(banPool.key, session) then
             return true
         end
     end
     return false
 end
 
+local function IsGodPoolFilteringActive()
+    return lib.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isActive", false) == true
+end
+
+local function IsGodVisibleInGodPool(godKey)
+    local resolvedGodKey = banConfig.ResolveGodKey(godKey)
+    return lib.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isAvailable", true, resolvedGodKey) ~= false
+end
+
 local function GetVisibleOlympianRoots(session)
-    local godPoolFiltering = uiData.IsGodPoolFilteringActive()
+    local godPoolFiltering = IsGodPoolFilteringActive()
     local roots = {}
     for _, root in ipairs(BuildOlympianRoots(session)) do
-        if not godPoolFiltering or uiData.IsGodVisibleInGodPool(root.id) then
+        if not godPoolFiltering or IsGodVisibleInGodPool(root.id) then
             roots[#roots + 1] = root
         end
     end
@@ -67,15 +84,15 @@ end
 local function DrawForcePanel(ui, session, root)
     lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
-    internal.DrawConfiguredTierControl(ui, session, root)
-    for _, scope in ipairs(root.scopes) do
-        internal.DrawForceBanRow(ui, session, root, scope)
+    components.DrawConfiguredBanPoolControl(ui, session, root)
+    for _, banPool in ipairs(root.banPools) do
+        components.DrawForceBanRow(ui, session, root, banPool)
     end
 end
 
 local function GetBridalGlowEligibleRoots(session)
-    if uiData.bridalGlowEligibleRoots then
-        return uiData.bridalGlowEligibleRoots
+    if bridalGlowEligibleRoots then
+        return bridalGlowEligibleRoots
     end
 
     local visibleRoots = GetVisibleOlympianRoots(session)
@@ -83,29 +100,37 @@ local function GetBridalGlowEligibleRoots(session)
     for _, root in ipairs(visibleRoots) do
         cached[#cached + 1] = root
     end
-    uiData.bridalGlowEligibleRoots = cached
+    bridalGlowEligibleRoots = cached
     return cached
 end
 
 local function GetBridalGlowEligibleBoons(root)
     if not root then
-        return uiData.EMPTY_LIST
+        return EMPTY_LIST
     end
 
-    local cached = uiData.bridalGlowBoonsByRoot[root.id]
+    local cached = bridalGlowBoonsByRoot[root.id]
     if cached then
         return cached
     end
 
     local boons = {}
-    for _, boon in ipairs(uiData.GetScopeBoons(root.primaryScopeKey)) do
-        if uiData.IsBridalGlowEligibleBoon(boon) then
+    for _, boon in ipairs(uiData.GetBanPoolBoons(root.primaryGodKey)) do
+        if boon.IsBridalGlowEligible == true then
             boon.BridalGlowLabel = boon.BridalGlowLabel or uiData.GetBoonText(boon)
             boons[#boons + 1] = boon
         end
     end
-    uiData.bridalGlowBoonsByRoot[root.id] = boons
+    bridalGlowBoonsByRoot[root.id] = boons
     return boons
+end
+
+local function FindBoonByKey(banPoolKey, boonKey)
+    for _, boon in ipairs(uiData.GetBanPoolBoons(banPoolKey)) do
+        if boon.Key == boonKey then
+            return boon
+        end
+    end
 end
 
 local function FindBridalGlowRootForTarget(roots, selectedBoonKey)
@@ -114,8 +139,8 @@ local function FindBridalGlowRootForTarget(roots, selectedBoonKey)
     end
 
     for _, root in ipairs(roots) do
-        local boon = uiData.FindBoonByKey(root.primaryScopeKey, selectedBoonKey)
-        if boon and uiData.IsBridalGlowEligibleBoon(boon) then
+        local boon = FindBoonByKey(root.primaryGodKey, selectedBoonKey)
+        if boon and boon.IsBridalGlowEligible == true then
             return root
         end
     end
@@ -143,12 +168,28 @@ local function EnsureBridalGlowRootSelection(roots, selectedBoonKey, session)
     return fallback
 end
 
+local function GetCurrentBridalGlowTargetText(selectedBoonKey)
+    if selectedBoonKey == nil or selectedBoonKey == "" then
+        return "Current Target: Random"
+    end
+
+    local eligibleRoots = GetBridalGlowEligibleRoots()
+    for _, root in ipairs(eligibleRoots) do
+        local boon = FindBoonByKey(root.primaryGodKey, selectedBoonKey)
+        if boon and boon.IsBridalGlowEligible == true then
+            return "Current Target: " .. (boon.BridalGlowLabel or uiData.GetBoonText(boon))
+        end
+    end
+
+    return "Current Target: Random"
+end
+
 local function DrawBridalGlowPanel(ui, session)
     local selectedBoonKey = session.view.BridalGlowTargetBoon or ""
     local eligibleRoots = GetBridalGlowEligibleRoots(session)
 
     lib.widgets.text(ui, "Choose the Olympian god and boon pool Bridal Glow can target.")
-    lib.widgets.text(ui, uiData.GetCurrentBridalGlowTargetText(session))
+    lib.widgets.text(ui, GetCurrentBridalGlowTargetText(selectedBoonKey))
     lib.widgets.separator(ui)
 
     if #eligibleRoots == 0 then
@@ -185,19 +226,19 @@ local function DrawBridalGlowPanel(ui, session)
     })
     lib.widgets.separator(ui)
     if ui.Selectable("Random", selectedBoonKey == "") then
-        internal.uiUtilities.SetBridalGlowTargetBoonKey(nil, session)
+        uiActions.SetBridalGlowTargetBoonKey(nil, session)
         selectedBoonKey = ""
     end
     for _, boon in ipairs(eligibleBoons) do
         if ui.Selectable(boon.BridalGlowLabel, boon.Key == selectedBoonKey) then
-            internal.uiUtilities.SetBridalGlowTargetBoonKey(boon.Key, session)
+            uiActions.SetBridalGlowTargetBoonKey(boon.Key, session)
             selectedBoonKey = boon.Key
         end
     end
     ui.EndChild()
 end
 
-function internal.DrawOlympiansTab(ui, session, host)
+local function DrawOlympiansTab(ui, session, host)
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(session)
     if #visibleRoots == 0 then
         lib.widgets.text(ui, "No Olympians are currently available.", {
@@ -211,7 +252,7 @@ function internal.DrawOlympiansTab(ui, session, host)
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetNavLabel(root, session),
-            color = uiData.GetSourceColor(root.primaryScopeKey),
+            color = uiData.GetGodColor(root.primaryGodKey),
         }
     end
 
@@ -240,14 +281,14 @@ function internal.DrawOlympiansTab(ui, session, host)
             DrawForcePanel(ui, session, root)
             ui.EndTabItem()
         end
-        for _, scope in ipairs(root.scopes) do
-            if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, host, scope.key, "olympians")
+        for _, banPool in ipairs(root.banPools) do
+            if ui.BeginTabItem(banPool.label) then
+                components.DrawBanPanel(ui, session, host, banPool.key, "olympians")
                 ui.EndTabItem()
             end
         end
         if ui.BeginTabItem("Rarity") then
-            internal.DrawRarityPanel(ui, session, root)
+            components.DrawRarityPanel(ui, session, root)
             ui.EndTabItem()
         end
         if root.hasBridalGlow and ui.BeginTabItem("Bridal Glow Target") then
@@ -258,3 +299,7 @@ function internal.DrawOlympiansTab(ui, session, host)
     end
     ui.EndChild()
 end
+
+return {
+    draw = DrawOlympiansTab,
+}

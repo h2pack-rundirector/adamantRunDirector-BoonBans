@@ -1,9 +1,12 @@
 local internal = RunDirectorBoonBans_Internal
-local uiData = internal.ui
+local deps = ...
+local uiData = deps.model
+local components = deps.components
+local banConfig = internal.banConfig
 local ACTIVE_OTHER_GOD_ROOT_ALIAS = "ActiveOtherGodRoot"
 
 local OTHER_GOD_ROOT_SPECS = {
-    { id = "Hermes", tiered = true },
+    { id = "Hermes" },
     { id = "Selene" },
     { id = "Artemis" },
     { id = "Athena" },
@@ -17,18 +20,14 @@ local OTHER_GOD_ROOT_SPECS = {
 local function BuildOtherGodRoots(session)
     local roots = {}
     for _, spec in ipairs(OTHER_GOD_ROOT_SPECS) do
-        if spec.tiered then
-            roots[#roots + 1] = uiData.BuildTierRoot(spec.id, { session = session })
-        else
-            roots[#roots + 1] = uiData.BuildSingleScopeRoot(spec.id)
-        end
+        roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, { session = session })
     end
     return roots
 end
 
 local function IsRootCustomized(root, session)
-    for _, scope in ipairs(root.scopes) do
-        if uiData.IsScopeCustomized(scope.key, session) then
+    for _, banPool in ipairs(root.banPools) do
+        if banConfig.IsBanPoolCustomized(banPool.key, session) then
             return true
         end
     end
@@ -56,21 +55,21 @@ end
 local function DrawForcePanel(ui, session, root)
     lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
-    internal.DrawConfiguredTierControl(ui, session, root)
-    for _, scope in ipairs(root.scopes) do
-        internal.DrawForceBanRow(ui, session, root, scope, {
-            label = scope.label == "Bans" and "Force 1" or scope.label,
+    components.DrawConfiguredBanPoolControl(ui, session, root)
+    for _, banPool in ipairs(root.banPools) do
+        components.DrawForceBanRow(ui, session, root, banPool, {
+            label = banPool.label == "Bans" and "Force 1" or banPool.label,
         })
     end
 end
 
-function internal.DrawOtherGodsTab(ui, session, host)
+local function DrawOtherGodsTab(ui, session, host)
     local tabs = {}
     for _, root in ipairs(BuildOtherGodRoots(session)) do
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetNavLabel(root, session),
-            color = uiData.GetSourceColor(root.primaryScopeKey),
+            color = uiData.GetGodColor(root.primaryGodKey),
         }
     end
 
@@ -88,21 +87,25 @@ function internal.DrawOtherGodsTab(ui, session, host)
 
     ui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
-        if #root.scopes > 1 and ui.BeginTabItem("Setup") then
+        if #root.banPools > 1 and ui.BeginTabItem("Setup") then
             DrawForcePanel(ui, session, root)
             ui.EndTabItem()
         end
-        for _, scope in ipairs(root.scopes) do
-            if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, host, scope.key, "other_gods")
+        for _, banPool in ipairs(root.banPools) do
+            if ui.BeginTabItem(banPool.label) then
+                components.DrawBanPanel(ui, session, host, banPool.key, "other_gods")
                 ui.EndTabItem()
             end
         end
         if root.hasRarity and ui.BeginTabItem("Rarity") then
-            internal.DrawRarityPanel(ui, session, root)
+            components.DrawRarityPanel(ui, session, root)
             ui.EndTabItem()
         end
         ui.EndTabBar()
     end
     ui.EndChild()
 end
+
+return {
+    draw = DrawOtherGodsTab,
+}

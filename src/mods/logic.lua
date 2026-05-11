@@ -3,18 +3,26 @@ local internal = RunDirectorBoonBans_Internal
 function internal.RegisterHooks(host, store)
     _G.bit32 = require("bit32")
 
-    import("mods/logic/ban_config_view.lua")
-    import("mods/logic/runtime_utilities.lua")
-
-    import("mods/logic/runtime_state.lua")
+    import("mods/logic/run_state.lua")
+    local banResolverModule = import("mods/logic/ban_resolver.lua")
     import("mods/logic/acquisition.lua")
     import("mods/logic/npc_logic.lua")
     import("mods/logic/loot_logic.lua")
 
-    internal.RegisterRuntimeState(host, store)
-    internal.RegisterAcquisitionHooks(host)
-    internal.RegisterNpcHooks(host, store)
-    internal.RegisterLootHooks(host, store)
+    local runState = internal.CreateRunState(store)
+    local banResolver = banResolverModule.create(
+        internal.catalog,
+        internal.banPools,
+        internal.banConfig,
+        store,
+        runState,
+        internal.godDefs
+    )
+
+    host.logIf("[Micro] GodCatalog populated.")
+    internal.RegisterAcquisitionHooks(host, runState, banResolver)
+    internal.RegisterNpcHooks(host, store, banResolver)
+    internal.RegisterLootHooks(host, store, runState, banResolver)
 end
 
 return internal

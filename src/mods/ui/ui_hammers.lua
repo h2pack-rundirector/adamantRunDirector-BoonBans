@@ -1,5 +1,8 @@
 local internal = RunDirectorBoonBans_Internal
-local uiData = internal.ui
+local deps = ...
+local uiData = deps.model
+local components = deps.components
+local banConfig = internal.banConfig
 local ACTIVE_HAMMER_ROOT_ALIAS = "ActiveHammerRoot"
 
 local HAMMER_ROOT_KEYS = {
@@ -13,8 +16,8 @@ local HAMMER_ROOT_KEYS = {
 
 local function BuildHammerRoots(session)
     local roots = {}
-    for _, rootKey in ipairs(HAMMER_ROOT_KEYS) do
-        roots[#roots + 1] = uiData.BuildTierRoot(rootKey, {
+    for _, godKey in ipairs(HAMMER_ROOT_KEYS) do
+        roots[#roots + 1] = uiData.BuildBanPoolRoot(godKey, {
             session = session,
             hasRarity = false,
         })
@@ -23,8 +26,8 @@ local function BuildHammerRoots(session)
 end
 
 local function IsHammerCustomized(root, session)
-    for _, scope in ipairs(root.scopes) do
-        if uiData.IsScopeCustomized(scope.key, session) then
+    for _, banPool in ipairs(root.banPools) do
+        if banConfig.IsBanPoolCustomized(banPool.key, session) then
             return true
         end
     end
@@ -54,28 +57,28 @@ local function GetActiveHammerRoot(session)
             return root
         end
     end
-    return uiData.BuildTierRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
+    return uiData.BuildBanPoolRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
 end
 
 local function DrawHammerForcePanel(ui, session, root)
     lib.widgets.text(ui, "Setup")
     lib.widgets.separator(ui)
-    internal.DrawConfiguredTierControl(ui, session, root)
-    for _, scope in ipairs(root.scopes) do
-        internal.DrawForceBanRow(ui, session, root, scope, {
+    components.DrawConfiguredBanPoolControl(ui, session, root)
+    for _, banPool in ipairs(root.banPools) do
+        components.DrawForceBanRow(ui, session, root, banPool, {
             controlWidth = 200,
             drawRarity = false,
         })
     end
 end
 
-function internal.DrawHammersTab(ui, session, host)
+local function DrawHammersTab(ui, session, host)
     local tabs = {}
     for _, root in ipairs(BuildHammerRoots(session)) do
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetHammerNavLabel(root, session),
-            color = uiData.GetSourceColor(root.primaryScopeKey),
+            color = uiData.GetGodColor(root.primaryGodKey),
         }
     end
 
@@ -97,9 +100,9 @@ function internal.DrawHammersTab(ui, session, host)
             DrawHammerForcePanel(ui, session, root)
             ui.EndTabItem()
         end
-        for _, scope in ipairs(root.scopes) do
-            if ui.BeginTabItem(scope.label) then
-                internal.DrawBanPanel(ui, session, host, scope.key, "hammer")
+        for _, banPool in ipairs(root.banPools) do
+            if ui.BeginTabItem(banPool.label) then
+                components.DrawBanPanel(ui, session, host, banPool.key, "hammer")
                 ui.EndTabItem()
             end
         end
@@ -109,3 +112,7 @@ function internal.DrawHammersTab(ui, session, host)
     end
     ui.EndChild()
 end
+
+return {
+    draw = DrawHammersTab,
+}

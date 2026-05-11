@@ -1,62 +1,17 @@
 local internal = RunDirectorBoonBans_Internal
 
-internal.ui = internal.ui or {}
-local uiData = internal.ui
-
-import("mods/ui/ui_utilities.lua")
-import("mods/ui/ui_shared.lua")
-import("mods/ui/ui_olympians.lua")
-import("mods/ui/ui_hammers.lua")
-import("mods/ui/ui_npcs.lua")
-import("mods/ui/ui_other_gods.lua")
-
-function internal.DrawBanSearchControls(ui, session, idSuffix)
-    idSuffix = tostring(idSuffix or "")
-
-    ui.AlignTextToFramePadding()
-    ui.Text("Filter:")
-    ui.SameLine()
-    lib.widgets.inputText(ui, session, uiData.BAN_FILTER_TEXT_ALIAS, {
-        label = "",
-        controlWidth = 180,
-    })
-    ui.SameLine()
-    lib.widgets.button(ui, "Clear", {
-        id = "boon_bans_filter_clear_" .. idSuffix,
-        onClick = function()
-            session.reset(uiData.BAN_FILTER_TEXT_ALIAS)
-        end,
-    })
-end
-
-function internal.DrawFilteredPackedBanList(ui, session, scopeKey, opts)
-    opts = opts or {}
-    local filterText = tostring(session and session.view and session.view[uiData.BAN_FILTER_TEXT_ALIAS] or "")
-    local handle, bindAlias = internal.ResolveBanBinding(scopeKey, session)
-    if not handle or not bindAlias then
-        return
-    end
-
-    lib.widgets.packedCheckboxList(ui, handle, bindAlias, {
-        valueColors = opts.valueColors or uiData.BuildPackedBanValueColors(scopeKey),
-        slotCount = opts.slotCount or #(uiData.GetScopeBoons(scopeKey) or uiData.EMPTY_LIST),
-        filterText = filterText,
-    })
-
-    if uiData.GetVisibleBanCount(scopeKey, session) == 0 then
-        lib.widgets.text(ui, "No boons match the current filter.", {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
-    end
-end
-
-function internal.ResetAllControls(session, host)
-    local bansChanged = internal.uiUtilities.ResetAllBans(session, host)
-    internal.uiUtilities.ResetAllRarity(session)
-    if bansChanged then
-        internal.uiUtilities.RecalculateBannedCounts(session, host)
-    end
-end
+local uiModel = import("mods/ui/ui_model.lua")
+local uiActions = import("mods/ui/ui_actions.lua")
+local uiComponents = import("mods/ui/ui_components.lua", nil, uiModel, uiActions)
+local uiDeps = {
+    model = uiModel,
+    actions = uiActions,
+    components = uiComponents,
+}
+local olympiansUi = import("mods/ui/ui_olympians.lua", nil, uiDeps)
+local hammersUi = import("mods/ui/ui_hammers.lua", nil, uiDeps)
+local npcsUi = import("mods/ui/ui_npcs.lua", nil, uiDeps)
+local otherGodsUi = import("mods/ui/ui_other_gods.lua", nil, uiDeps)
 
 local function DrawSettingsTab(ui, session, host)
     lib.widgets.dropdown(ui, session, "ImproveFirstNBoonRarity", {
@@ -69,16 +24,13 @@ local function DrawSettingsTab(ui, session, host)
     lib.widgets.confirmButton(ui, "boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
-            local bansChanged = internal.uiUtilities.ResetAllBans(session, host)
-            if bansChanged then
-                internal.uiUtilities.RecalculateBannedCounts(session, host)
-            end
+            uiActions.ResetAllBans(session, host)
         end,
     })
     lib.widgets.confirmButton(ui, "boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
-            internal.uiUtilities.ResetAllRarity(session)
+            uiActions.ResetAllRarity(session)
         end,
     })
 end
@@ -89,22 +41,22 @@ function internal.DrawTab(ui, session, host)
     end
 
     if ui.BeginTabItem("Olympians") then
-        internal.DrawOlympiansTab(ui, session, host)
+        olympiansUi.draw(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Other Gods") then
-        internal.DrawOtherGodsTab(ui, session, host)
+        otherGodsUi.draw(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Hammers") then
-        internal.DrawHammersTab(ui, session, host)
+        hammersUi.draw(ui, session, host)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("NPCs") then
-        internal.DrawNpcsTab(ui, session, host)
+        npcsUi.draw(ui, session, host)
         ui.EndTabItem()
     end
 
@@ -121,7 +73,7 @@ function internal.DrawQuickContent(ui, session, host)
     lib.widgets.confirmButton(ui, "boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            internal.ResetAllControls(session, host)
+            uiActions.ResetAllControls(session, host)
         end,
     })
 end

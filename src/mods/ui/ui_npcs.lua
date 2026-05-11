@@ -1,37 +1,50 @@
 local internal = RunDirectorBoonBans_Internal
-local uiData = internal.ui
+local deps = ...
+local uiData = deps.model
+local components = deps.components
+local banConfig = internal.banConfig
 local ACTIVE_NPC_ROOT_ALIAS = "ActiveNpcRoot"
 
 local NPC_ROOTS = {
-    { id = "Arachne", label = "Arachne", group = "Underworld", primaryScopeKey = "Arachne", hasRarity = false },
-    { id = "Narcissus", label = "Narcissus", group = "Underworld", primaryScopeKey = "Narcissus", hasRarity = false },
-    { id = "Echo", label = "Echo", group = "Underworld", primaryScopeKey = "Echo", hasRarity = false },
-    { id = "Hades", label = "Hades", group = "Underworld", primaryScopeKey = "Hades", hasRarity = false },
-    { id = "Medea", label = "Medea", group = "Surface", primaryScopeKey = "Medea", hasRarity = false },
-    { id = "Circe", label = "Circe", group = "Surface", primaryScopeKey = "Circe", hasRarity = false },
-    { id = "Icarus", label = "Icarus", group = "Surface", primaryScopeKey = "Icarus", hasRarity = false },
-    { id = "Dionysus", label = "Dionysus", group = "Surface", primaryScopeKey = "Dionysus", hasRarity = true },
-    { id = "CirceBNB", label = "Black Night Banishment", group = "Surface", primaryScopeKey = "CirceBNB", hasRarity = false },
-    { id = "CirceCRD", label = "Red Citrine Divination", group = "Surface", primaryScopeKey = "CirceCRD", hasRarity = false },
-    { id = "HadesKeepsake", label = "Jeweled Pom", group = "Keepsakes", primaryScopeKey = "HadesKeepsake", hasRarity = false },
+    { id = "Arachne", label = "Arachne", group = "Underworld", hasRarity = false },
+    { id = "Narcissus", label = "Narcissus", group = "Underworld", hasRarity = false },
+    { id = "Echo", label = "Echo", group = "Underworld", hasRarity = false },
+    { id = "Hades", label = "Hades", group = "Underworld", hasRarity = false },
+    { id = "Medea", label = "Medea", group = "Surface", hasRarity = false },
+    { id = "Circe", label = "Circe", group = "Surface", hasRarity = false },
+    { id = "Icarus", label = "Icarus", group = "Surface", hasRarity = false },
+    { id = "Dionysus", label = "Dionysus", group = "Surface", hasRarity = true },
+    { id = "CirceBNB", label = "Black Night Banishment", group = "Surface", hasRarity = false },
+    { id = "CirceCRD", label = "Red Citrine Divination", group = "Surface", hasRarity = false },
+    { id = "HadesKeepsake", label = "Jeweled Pom", group = "Keepsakes", hasRarity = false },
 }
 
-for _, root in ipairs(NPC_ROOTS) do
-    root.scopes = {
-        { key = root.primaryScopeKey, label = "Bans" },
-    }
+local function IsRegionMatch(group, regionValue)
+    if regionValue == 4 then return true end
+    if group == "Underworld" then
+        return regionValue == 2
+    end
+    if group == "Surface" then
+        return regionValue == 3
+    end
+    return true
 end
 
 local function IsRootCustomized(root, session)
-    return uiData.IsScopeCustomized(root.primaryScopeKey, session)
+    return banConfig.IsBanPoolCustomized(root.primaryGodKey, session)
 end
 
 local function GetVisibleNpcRoots(session)
     local regionValue = session and session.view and session.view[uiData.NPC_VIEW_REGION_ALIAS] or 4
     local roots = {}
-    for _, root in ipairs(NPC_ROOTS) do
-        if uiData.IsRegionMatch(root.group, regionValue) then
-            roots[#roots + 1] = root
+    for _, spec in ipairs(NPC_ROOTS) do
+        if IsRegionMatch(spec.group, regionValue) then
+            roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, {
+                session = session,
+                label = spec.label,
+                group = spec.group,
+                hasRarity = spec.hasRarity,
+            })
         end
     end
     return roots
@@ -74,7 +87,7 @@ local function DrawRegionFilter(ui, session)
     })
 end
 
-function internal.DrawNpcsTab(ui, session, host)
+local function DrawNpcsTab(ui, session, host)
     DrawRegionFilter(ui, session)
     ui.Spacing()
 
@@ -91,7 +104,7 @@ function internal.DrawNpcsTab(ui, session, host)
         tabs[#tabs + 1] = {
             key = root.id,
             label = GetNavLabel(root, session),
-            color = uiData.GetSourceColor(root.primaryScopeKey),
+            color = uiData.GetGodColor(root.primaryGodKey),
             group = root.group,
         }
     end
@@ -111,14 +124,18 @@ function internal.DrawNpcsTab(ui, session, host)
     ui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if ui.BeginTabItem("Bans") then
-            internal.DrawBanPanel(ui, session, host, root.primaryScopeKey, "npcs")
+            components.DrawBanPanel(ui, session, host, root.primaryGodKey, "npcs")
             ui.EndTabItem()
         end
         if root.hasRarity and ui.BeginTabItem("Rarity") then
-            internal.DrawRarityPanel(ui, session, root)
+            components.DrawRarityPanel(ui, session, root)
             ui.EndTabItem()
         end
         ui.EndTabBar()
     end
     ui.EndChild()
 end
+
+return {
+    draw = DrawNpcsTab,
+}
