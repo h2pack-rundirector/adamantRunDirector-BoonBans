@@ -1,4 +1,3 @@
-local bit32 = require("bit32")
 local lshift = bit32.lshift
 
 local catalogExtractor = {}

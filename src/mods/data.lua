@@ -1,4 +1,5 @@
 local internal = RunDirectorBoonBans_Internal
+_G.bit32 = _G.bit32 or require("bit32")
 
 local definitions = import("mods/data/definitions.lua")
 local catalogModule = import("mods/data/catalog/catalog.lua")

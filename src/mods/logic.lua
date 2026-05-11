@@ -1,8 +1,6 @@
 local internal = RunDirectorBoonBans_Internal
 
 function internal.RegisterHooks(host, store)
-    _G.bit32 = require("bit32")
-
     import("mods/logic/run_state.lua")
     local banResolverModule = import("mods/logic/ban_resolver.lua")
     import("mods/logic/acquisition.lua")
