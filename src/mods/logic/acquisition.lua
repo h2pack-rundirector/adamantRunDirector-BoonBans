@@ -4,19 +4,12 @@
 local internal = RunDirectorBoonBans_Internal
 local banConfig = internal.banConfig
 
-local SOURCE_FIELD = "RunDirectorBoonBans_OfferSourceName"
+local ACTIVE_GOD = "activeGod"
+local OFFER_SOURCES = "offerSources"
 
 local function IsDuoTraitName(traitName)
     local traitData = traitName and TraitData[traitName]
     return traitData and traitData.IsDuoBoon == true
-end
-
-local function StampUpgradeOfferSource(upgradeData, sourceName)
-    if type(upgradeData) ~= "table" or type(sourceName) ~= "string" or sourceName == "" then
-        return false
-    end
-    upgradeData[SOURCE_FIELD] = sourceName
-    return true
 end
 
 local function ResolveGodKeyFromSourceName(sourceName, banResolver)
@@ -45,11 +38,10 @@ end
 local function ResolveAcquiredGodKey(args, traitData, acquiredTrait, runState, banResolver)
     local traitName = GetAcquiredTraitName(args, traitData, acquiredTrait)
 
-    local stampedSourceName = (acquiredTrait and acquiredTrait[SOURCE_FIELD])
-        or (traitData and traitData[SOURCE_FIELD])
-    local stampedGodKey = ResolveGodKeyFromSourceName(stampedSourceName, banResolver)
-    if stampedGodKey then
-        return stampedGodKey, "stamped-source"
+    local rememberedSourceName = runState and runState.scratch.mapGet(OFFER_SOURCES, traitName) or nil
+    local rememberedGodKey = ResolveGodKeyFromSourceName(rememberedSourceName, banResolver)
+    if rememberedGodKey then
+        return rememberedGodKey, "remembered-source"
     end
 
     local argsGodKey = ResolveGodKeyFromSourceName(args and args.SourceName or nil, banResolver)
@@ -57,7 +49,7 @@ local function ResolveAcquiredGodKey(args, traitData, acquiredTrait, runState, b
         return argsGodKey, "args-source"
     end
 
-    local activeGodKey = runState and runState.getActiveGod() or nil
+    local activeGodKey = runState and runState.scratch.get(ACTIVE_GOD) or nil
     if activeGodKey then
         return banConfig.ResolveGodKey(activeGodKey), "active-god"
     end
@@ -105,15 +97,16 @@ function internal.RegisterAcquisitionHooks(host, runState, banResolver)
             and button and button.Data
             and lootData and lootData.Name
             and IsDuoTraitName(button.Data.Name) then
-            StampUpgradeOfferSource(button.Data, lootData.Name)
+            runState.scratch.mapSet(OFFER_SOURCES, button.Data.Name, lootData.Name)
         end
 
         return button
     end)
 
     lib.hooks.Wrap(internal, "OpenUpgradeChoiceMenu", function(base, source, args)
+        runState.scratch.clear(OFFER_SOURCES)
         if host.isEnabled() and source and source.Name then
-            runState.setActiveGod(banResolver.getGodFromLootsource(source.Name))
+            runState.scratch.set(ACTIVE_GOD, banResolver.getGodFromLootsource(source.Name))
         end
         base(source, args)
     end)
@@ -140,7 +133,7 @@ function internal.RegisterAcquisitionHooks(host, runState, banResolver)
                 host.logIf("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
                     newCount or 0)
             end
-            runState.clearActiveGod()
+            runState.scratch.clear(ACTIVE_GOD)
 
             if shouldAdvance then
                 runState.consumeForcedRarity(traitName)

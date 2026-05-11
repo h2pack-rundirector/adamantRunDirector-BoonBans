@@ -1,7 +1,5 @@
 local internal = RunDirectorBoonBans_Internal
-local deps = ...
-local uiData = deps.model
-local components = deps.components
+local uiData, components = nil, nil
 local banConfig = internal.banConfig
 local ACTIVE_HAMMER_ROOT_ALIAS = "ActiveHammerRoot"
 
@@ -113,6 +111,14 @@ local function DrawHammersTab(ui, session, host)
     ui.EndChild()
 end
 
-return {
-    draw = DrawHammersTab,
-}
+local module = {}
+
+function module.bind(deps)
+    uiData = deps.model
+    components = deps.components
+    return module
+end
+
+module.draw = DrawHammersTab
+
+return module

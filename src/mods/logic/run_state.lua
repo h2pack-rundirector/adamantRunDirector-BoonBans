@@ -1,15 +1,15 @@
-local internal = RunDirectorBoonBans_Internal
-
 local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 local EMPTY_COUNTS = {}
 
-function internal.CreateRunState(store)
+local function create(store)
     local scratch = {
-        activeGodKey = nil,
+        values = {},
+        maps = {},
     }
 
     local runState = {}
+    runState.scratch = {}
 
     local function GetCache()
         if not CurrentRun then return nil end
@@ -57,16 +57,39 @@ function internal.CreateRunState(store)
         return counts[godKey]
     end
 
-    function runState.setActiveGod(godKey)
-        scratch.activeGodKey = godKey
+    function runState.scratch.clear(name)
+        scratch.values[name] = nil
+        scratch.maps[name] = nil
     end
 
-    function runState.getActiveGod()
-        return scratch.activeGodKey
+    function runState.scratch.set(name, value)
+        scratch.values[name] = value
     end
 
-    function runState.clearActiveGod()
-        scratch.activeGodKey = nil
+    function runState.scratch.get(name)
+        return scratch.values[name]
+    end
+
+    function runState.scratch.mapSet(name, key, value)
+        if scratch.maps[name] == nil then
+            scratch.maps[name] = {}
+        end
+        scratch.maps[name][key] = value
+    end
+
+    function runState.scratch.mapGet(name, key)
+        local values = scratch.maps[name]
+        return values and values[key] or nil
+    end
+
+    function runState.scratch.mapTake(name, key)
+        local values = scratch.maps[name]
+        if values == nil then
+            return nil
+        end
+        local value = values[key]
+        values[key] = nil
+        return value
     end
 
     function runState.getForcedRarityRemaining()
@@ -92,3 +115,7 @@ function internal.CreateRunState(store)
 
     return runState
 end
+
+return {
+    create = create,
+}

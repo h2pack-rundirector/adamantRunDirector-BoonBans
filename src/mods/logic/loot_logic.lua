@@ -9,6 +9,8 @@ local godDefs = internal.godDefs
 local isKeepsakeOffering = false
 local skipIsTraitEligible = false
 
+local LOOT_OFFERS = "lootOffers"
+
 local function GetVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
     skipIsTraitEligible = true
     local result = base(upgradeOptions, lootData, upgradeChoiceData)
@@ -98,8 +100,10 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     host.logIf("[Micro] Loot Result: Passed %d, Banned %d", #allowed, #banned)
 
     if #allowed == 0 then
-        lootData._BoonBans_PendingAllowed = {}
-        lootData._BoonBans_PendingFullCount = #fullList
+        runState.scratch.mapSet(LOOT_OFFERS, lootData, {
+            allowed = {},
+            fullCount = #fullList,
+        })
         return fullList
     end
 
@@ -115,9 +119,11 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
         host.logIf("  %d. %s (Rarity: %s)", i, queued.ItemName, tostring(queued.rarity))
     end
 
-    lootData._BoonBans_PendingAllowed = allowed
-    lootData._BoonBans_PendingFullCount = #fullList
-    lootData._BoonBans_DuoLegendaryQueue = duoLegendaryQueue
+    runState.scratch.mapSet(LOOT_OFFERS, lootData, {
+        allowed = allowed,
+        fullCount = #fullList,
+        duoLegendaryQueue = duoLegendaryQueue,
+    })
 
     return queue
 end)
@@ -133,14 +139,10 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
     base(lootData, args)
 
     -- Consume pending state unconditionally to prevent stale values on next call.
-    local allowed = lootData._BoonBans_PendingAllowed or {}
-    local fullCount = lootData._BoonBans_PendingFullCount or 0
-    lootData._BoonBans_PendingAllowed = nil
-    lootData._BoonBans_PendingFullCount = nil
-
-    -- Consume duo/legendary queue early so we have rarity info available during injection.
-    local duoLegendaryQueue = lootData._BoonBans_DuoLegendaryQueue
-    lootData._BoonBans_DuoLegendaryQueue = nil
+    local pendingOffer = runState.scratch.mapTake(LOOT_OFFERS, lootData) or {}
+    local allowed = pendingOffer.allowed or {}
+    local fullCount = pendingOffer.fullCount or 0
+    local duoLegendaryQueue = pendingOffer.duoLegendaryQueue
 
     if not host.isEnabled() then return end
 

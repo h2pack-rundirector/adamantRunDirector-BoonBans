@@ -1,7 +1,5 @@
 local internal = RunDirectorBoonBans_Internal
-local deps = ...
-local uiData = deps.model
-local components = deps.components
+local uiData, components = nil, nil
 local banConfig = internal.banConfig
 local ACTIVE_NPC_ROOT_ALIAS = "ActiveNpcRoot"
 
@@ -136,6 +134,14 @@ local function DrawNpcsTab(ui, session, host)
     ui.EndChild()
 end
 
-return {
-    draw = DrawNpcsTab,
-}
+local module = {}
+
+function module.bind(deps)
+    uiData = deps.model
+    components = deps.components
+    return module
+end
+
+module.draw = DrawNpcsTab
+
+return module

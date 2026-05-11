@@ -1,8 +1,5 @@
 local internal = RunDirectorBoonBans_Internal
-local deps = ...
-local uiData = deps.model
-local uiActions = deps.actions
-local components = deps.components
+local uiData, uiActions, components = nil, nil, nil
 local banConfig = internal.banConfig
 local ACTIVE_OLYMPIAN_ROOT_ALIAS = "ActiveOlympianRoot"
 local BRIDAL_GLOW_ROOT_ALIAS = "BridalGlowRoot"
@@ -300,6 +297,15 @@ local function DrawOlympiansTab(ui, session, host)
     ui.EndChild()
 end
 
-return {
-    draw = DrawOlympiansTab,
-}
+local module = {}
+
+function module.bind(deps)
+    uiData = deps.model
+    uiActions = deps.actions
+    components = deps.components
+    return module
+end
+
+module.draw = DrawOlympiansTab
+
+return module

@@ -2,16 +2,17 @@ local internal = RunDirectorBoonBans_Internal
 
 local uiModel = import("mods/ui/ui_model.lua")
 local uiActions = import("mods/ui/ui_actions.lua")
-local uiComponents = import("mods/ui/ui_components.lua", nil, uiModel, uiActions)
+local uiComponentsModule = import("mods/ui/ui_components.lua")
+local uiComponents = uiComponentsModule.bind(uiModel, uiActions)
 local uiDeps = {
     model = uiModel,
     actions = uiActions,
     components = uiComponents,
 }
-local olympiansUi = import("mods/ui/ui_olympians.lua", nil, uiDeps)
-local hammersUi = import("mods/ui/ui_hammers.lua", nil, uiDeps)
-local npcsUi = import("mods/ui/ui_npcs.lua", nil, uiDeps)
-local otherGodsUi = import("mods/ui/ui_other_gods.lua", nil, uiDeps)
+local olympiansUi = import("mods/ui/ui_olympians.lua").bind(uiDeps)
+local hammersUi = import("mods/ui/ui_hammers.lua").bind(uiDeps)
+local npcsUi = import("mods/ui/ui_npcs.lua").bind(uiDeps)
+local otherGodsUi = import("mods/ui/ui_other_gods.lua").bind(uiDeps)
 
 local function DrawSettingsTab(ui, session, host)
     lib.widgets.dropdown(ui, session, "ImproveFirstNBoonRarity", {

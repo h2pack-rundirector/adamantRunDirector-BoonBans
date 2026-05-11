@@ -1,8 +1,14 @@
 local internal = RunDirectorBoonBans_Internal
-local uiData, uiActions = ...
+local uiData, uiActions = nil, nil
 local banConfig = internal.banConfig
 local banPools = internal.banPools
 local components = {}
+
+function components.bind(model, actions)
+    uiData = model
+    uiActions = actions
+    return components
+end
 
 function components.DrawBanSearchControls(ui, session, idSuffix)
     idSuffix = tostring(idSuffix or "")
