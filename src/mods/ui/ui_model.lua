@@ -1,7 +1,7 @@
-local internal = RunDirectorBoonBans_Internal
-local godCatalog = internal.catalog.entries
-local banConfig = internal.banConfig
-local banPools = internal.banPools
+local godCatalog = nil
+local godDefs = nil
+local banConfig = nil
+local banPools = nil
 
 local uiData = {}
 local EMPTY_LIST = {}
@@ -44,7 +44,7 @@ local function GetOrdinal(n)
 end
 
 local function GetGodDef(godKey)
-    return internal.godDefs and internal.godDefs[godKey] or nil
+    return godDefs and godDefs[godKey] or nil
 end
 
 local function GetForcedBoonDisplayLabel(boon)
@@ -121,7 +121,7 @@ function uiData.BuildPackedBanValueColors(banPoolKey)
         return colors
     end
     local godKey = banConfig.ResolveGodKey(banPoolKey)
-    local godDef = internal.godDefs and internal.godDefs[godKey] or nil
+    local godDef = godDefs and godDefs[godKey] or nil
     if type(godDef) == "table" and godDef.showPackedValueColors == false then
         packedBanValueColorsByBanPool[banPoolKey] = colors
         return colors
@@ -209,4 +209,14 @@ function uiData.BuildBanPoolRoot(godKey, opts)
     }
 end
 
-return uiData
+return {
+    create = function(data)
+        godCatalog = data.catalog.entries
+        godDefs = data.godDefs
+        banConfig = data.banConfig
+        banPools = data.banPools
+        packedBanDisplayValuesByBanPool = {}
+        packedBanValueColorsByBanPool = {}
+        return uiData
+    end,
+}

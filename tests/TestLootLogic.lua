@@ -1,4 +1,4 @@
--- luacheck: globals TestLootLogic TraitData GetTotalLootChoices lib RunDirectorBoonBans_Internal
+-- luacheck: globals TestLootLogic TraitData GetTotalLootChoices lib
 -- luacheck: globals AddRarityToTraits AddStackToTraits GetHeroTrait HeraTraitRarityPresentation IncreaseTraitLevel thread
 
 local lu = require("luaunit")
@@ -26,7 +26,7 @@ function TestLootLogic:setUp()
     self.wraps = {}
     lib = {
         hooks = {
-            Wrap = function(_, funcName, callback)
+            Wrap = function(funcName, callback)
                 self.wraps[funcName] = callback
             end,
         },
@@ -49,7 +49,7 @@ function TestLootLogic:setUp()
         return fn(...)
     end
 
-    RunDirectorBoonBans_Internal = {
+    self.data = {
         banConfig = {
             IsBanPoolConfigured = function()
                 return true
@@ -103,12 +103,12 @@ function TestLootLogic:setUp()
         end,
     }
 
-    dofile("src/mods/logic/loot_logic.lua")
-    RunDirectorBoonBans_Internal.RegisterLootHooks(self.host, self.store, self.runState, self.banResolver)
+    local lootLogic = dofile("src/mods/logic/loot_logic.lua").bind(self.data)
+    lootLogic.registerHooks(self.host, self.store, self.runState, self.banResolver)
 end
 
 function TestLootLogic:testEligibleUpgradesEarlyExitsForUnconfiguredBanPool()
-    RunDirectorBoonBans_Internal.banConfig.IsBanPoolConfigured = function()
+    self.data.banConfig.IsBanPoolConfigured = function()
         return false
     end
     local vanilla = {

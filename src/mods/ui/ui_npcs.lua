@@ -1,6 +1,5 @@
-local internal = RunDirectorBoonBans_Internal
 local uiData, components = nil, nil
-local banConfig = internal.banConfig
+local banConfig = nil
 local ACTIVE_NPC_ROOT_ALIAS = "ActiveNpcRoot"
 
 local NPC_ROOTS = {
@@ -137,6 +136,7 @@ end
 local module = {}
 
 function module.bind(deps)
+    banConfig = deps.data.banConfig
     uiData = deps.model
     components = deps.components
     return module

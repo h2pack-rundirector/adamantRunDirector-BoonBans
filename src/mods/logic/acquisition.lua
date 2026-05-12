@@ -1,8 +1,6 @@
 ---@meta _
 ---@diagnostic disable: lowercase-global
-
-local internal = RunDirectorBoonBans_Internal
-local banConfig = internal.banConfig
+local banConfig = nil
 
 local ACTIVE_GOD = "activeGod"
 local OFFER_SOURCES = "offerSources"
@@ -89,8 +87,15 @@ local function ShouldAdvanceBanPool(args, traitData, acquiredTrait, godKey)
     return true, "counted"
 end
 
-function internal.RegisterAcquisitionHooks(host, runState, banResolver)
-    lib.hooks.Wrap(internal, "CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
+local module = {}
+
+function module.bind(data)
+    banConfig = data.banConfig
+    return module
+end
+
+function module.registerHooks(host, runState, banResolver)
+    lib.hooks.Wrap("CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
         local button = base(screen, lootData, itemIndex, itemData, args)
 
         if host.isEnabled()
@@ -103,7 +108,7 @@ function internal.RegisterAcquisitionHooks(host, runState, banResolver)
         return button
     end)
 
-    lib.hooks.Wrap(internal, "OpenUpgradeChoiceMenu", function(base, source, args)
+    lib.hooks.Wrap("OpenUpgradeChoiceMenu", function(base, source, args)
         runState.scratch.clear(OFFER_SOURCES)
         if host.isEnabled() and source and source.Name then
             runState.scratch.set(ACTIVE_GOD, banResolver.getGodFromLootsource(source.Name))
@@ -111,7 +116,7 @@ function internal.RegisterAcquisitionHooks(host, runState, banResolver)
         base(source, args)
     end)
 
-    lib.hooks.Wrap(internal, "AddTraitToHero", function(base, args)
+    lib.hooks.Wrap("AddTraitToHero", function(base, args)
         local result = base(args)
         local traitData = args and args.TraitData or result
 
@@ -142,3 +147,5 @@ function internal.RegisterAcquisitionHooks(host, runState, banResolver)
         return result
     end)
 end
+
+return module

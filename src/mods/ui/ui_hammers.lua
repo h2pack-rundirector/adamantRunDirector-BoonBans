@@ -1,6 +1,5 @@
-local internal = RunDirectorBoonBans_Internal
 local uiData, components = nil, nil
-local banConfig = internal.banConfig
+local banConfig = nil
 local ACTIVE_HAMMER_ROOT_ALIAS = "ActiveHammerRoot"
 
 local HAMMER_ROOT_KEYS = {
@@ -114,6 +113,7 @@ end
 local module = {}
 
 function module.bind(deps)
+    banConfig = deps.data.banConfig
     uiData = deps.model
     components = deps.components
     return module

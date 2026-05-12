@@ -1,18 +1,9 @@
-local internal = RunDirectorBoonBans_Internal
-
-local uiModel = import("mods/ui/ui_model.lua")
-local uiActions = import("mods/ui/ui_actions.lua")
-local uiComponentsModule = import("mods/ui/ui_components.lua")
-local uiComponents = uiComponentsModule.bind(uiModel, uiActions)
-local uiDeps = {
-    model = uiModel,
-    actions = uiActions,
-    components = uiComponents,
-}
-local olympiansUi = import("mods/ui/ui_olympians.lua").bind(uiDeps)
-local hammersUi = import("mods/ui/ui_hammers.lua").bind(uiDeps)
-local npcsUi = import("mods/ui/ui_npcs.lua").bind(uiDeps)
-local otherGodsUi = import("mods/ui/ui_other_gods.lua").bind(uiDeps)
+local module = {}
+local uiActions = nil
+local olympiansUi = nil
+local hammersUi = nil
+local npcsUi = nil
+local otherGodsUi = nil
 
 local function DrawSettingsTab(ui, session, host)
     lib.widgets.dropdown(ui, session, "ImproveFirstNBoonRarity", {
@@ -36,7 +27,7 @@ local function DrawSettingsTab(ui, session, host)
     })
 end
 
-function internal.DrawTab(ui, session, host)
+function module.drawTab(ui, session, host)
     if not ui.BeginTabBar("BoonBansLeanTabs") then
         return false
     end
@@ -70,7 +61,7 @@ function internal.DrawTab(ui, session, host)
     return false
 end
 
-function internal.DrawQuickContent(ui, session, host)
+function module.drawQuickContent(ui, session, host)
     lib.widgets.confirmButton(ui, "boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
@@ -78,3 +69,23 @@ function internal.DrawQuickContent(ui, session, host)
         end,
     })
 end
+
+function module.bind(data)
+    local uiModel = import("mods/ui/ui_model.lua").create(data)
+    uiActions = import("mods/ui/ui_actions.lua").create(data)
+    local uiComponentsModule = import("mods/ui/ui_components.lua")
+    local uiComponents = uiComponentsModule.bind(data, uiModel, uiActions)
+    local uiDeps = {
+        data = data,
+        model = uiModel,
+        actions = uiActions,
+        components = uiComponents,
+    }
+    olympiansUi = import("mods/ui/ui_olympians.lua").bind(uiDeps)
+    hammersUi = import("mods/ui/ui_hammers.lua").bind(uiDeps)
+    npcsUi = import("mods/ui/ui_npcs.lua").bind(uiDeps)
+    otherGodsUi = import("mods/ui/ui_other_gods.lua").bind(uiDeps)
+    return module
+end
+
+return module

@@ -1,4 +1,4 @@
--- luacheck: globals TestUiActionsLogic RunDirectorBoonBans_Internal bit32
+-- luacheck: globals TestUiActionsLogic bit32
 
 local lu = require("luaunit")
 
@@ -58,7 +58,7 @@ local function MakeSession()
 end
 
 function TestUiActionsLogic:setUp()
-    RunDirectorBoonBans_Internal = {
+    self.data = {
         godDefs = {
             Apollo = {
                 rarityVar = "PackedApolloRarity",
@@ -91,7 +91,7 @@ function TestUiActionsLogic:setUp()
             end,
         },
     }
-    self.actions = dofile("src/mods/ui/ui_actions.lua")
+    self.actions = dofile("src/mods/ui/ui_actions.lua").create(self.data)
     self.session, self.values, self.rows = MakeSession()
     self.host = {
         logIf = function() end,

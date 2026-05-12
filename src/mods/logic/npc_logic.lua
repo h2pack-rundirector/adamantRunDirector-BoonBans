@@ -1,15 +1,21 @@
 ---@meta _
 ---@diagnostic disable: lowercase-global
-
-local internal = RunDirectorBoonBans_Internal
-local banConfig = internal.banConfig
-local godCatalog = internal.catalog.entries
+local banConfig = nil
+local godCatalog = nil
 
 local band = bit32.band
 local t_insert = table.insert
 
-function internal.RegisterNpcHooks(host, store, banResolver)
-    lib.hooks.Wrap(internal, "CirceRemoveShrineUpgrades", function(base, args)
+local module = {}
+
+function module.bind(data)
+    banConfig = data.banConfig
+    godCatalog = data.catalog.entries
+    return module
+end
+
+function module.registerHooks(host, store, banResolver)
+    lib.hooks.Wrap("CirceRemoveShrineUpgrades", function(base, args)
         if not host.isEnabled() then return base(args) end
         local restores = {}
         if godCatalog["CirceBNB"] then
@@ -29,7 +35,7 @@ function internal.RegisterNpcHooks(host, store, banResolver)
         end
     end)
 
-    lib.hooks.Wrap(internal, "CirceRandomMetaUpgrade", function(base, args)
+    lib.hooks.Wrap("CirceRandomMetaUpgrade", function(base, args)
         if not host.isEnabled() then return base(args) end
         local restores = {}
         local metaState = GameState.MetaUpgradeState or {}
@@ -50,7 +56,7 @@ function internal.RegisterNpcHooks(host, store, banResolver)
         end
     end)
 
-    lib.hooks.Wrap(internal, "AddRandomMetaUpgrades", function(base, numCards, args)
+    lib.hooks.Wrap("AddRandomMetaUpgrades", function(base, numCards, args)
         if not host.isEnabled() then return base(numCards, args) end
         if numCards and numCards ~= GetTotalHeroTraitValue("PostBossCards") then return base(numCards, args) end
 
@@ -76,7 +82,7 @@ function internal.RegisterNpcHooks(host, store, banResolver)
     end)
 
     local function wrapNPCChoice(funcName)
-        lib.hooks.Wrap(internal, funcName, function(base, source, args, screen)
+        lib.hooks.Wrap(funcName, function(base, source, args, screen)
             if host.isEnabled() and args.UpgradeOptions then
                 local allowed = {}
                 local banned = {}
@@ -108,7 +114,7 @@ function internal.RegisterNpcHooks(host, store, banResolver)
         end)
     end
 
-    lib.hooks.Wrap(internal, "GetEligibleSpells", function(base, screen, args)
+    lib.hooks.Wrap("GetEligibleSpells", function(base, screen, args)
         local eligible = base(screen, args)
         if not host.isEnabled() then return eligible end
 
@@ -143,3 +149,5 @@ function internal.RegisterNpcHooks(host, store, banResolver)
         wrapNPCChoice(func)
     end
 end
+
+return module

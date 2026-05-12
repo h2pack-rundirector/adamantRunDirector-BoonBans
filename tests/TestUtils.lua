@@ -1,4 +1,4 @@
--- luacheck: globals bit32 store ResetBoonBansUiHarness import
+-- luacheck: globals bit32 store ResetBoonBansUiHarness import MODULE_ANCHOR
 
 public = {}
 _PLUGIN = { guid = "test-boon-bans" }
@@ -344,7 +344,7 @@ function ResetBoonBansUiHarness(opts)
         return (banMasks[banPoolKey] or 0) ~= 0
     end
 
-    RunDirectorBoonBans_Internal = {
+    MODULE_ANCHOR = {
         godDefs = godDefs,
         catalog = {
             entries = catalogEntries,
@@ -359,8 +359,16 @@ function ResetBoonBansUiHarness(opts)
         return dofile("src/" .. path)
     end
 
-    local uiModel = import("mods/ui/ui_model.lua")
-    return uiModel, RunDirectorBoonBans_Internal, {
+    local data = {
+        godDefs = godDefs,
+        catalog = {
+            entries = catalogEntries,
+        },
+        banPools = banPools,
+        banConfig = banConfig,
+    }
+    local uiModel = import("mods/ui/ui_model.lua").create(data)
+    return uiModel, MODULE_ANCHOR, {
         configuredCounts = configuredCounts,
         banMasks = banMasks,
     }

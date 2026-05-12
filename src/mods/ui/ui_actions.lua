@@ -1,7 +1,6 @@
-local internal = RunDirectorBoonBans_Internal
-local godDefs = internal.godDefs
-local banConfig = internal.banConfig
-local banPools = internal.banPools
+local godDefs = nil
+local banConfig = nil
+local banPools = nil
 
 local uiActions = {}
 
@@ -121,4 +120,11 @@ function uiActions.ResetAllControls(session, host)
     uiActions.ResetAllRarity(session)
 end
 
-return uiActions
+return {
+    create = function(data)
+        godDefs = data.godDefs
+        banConfig = data.banConfig
+        banPools = data.banPools
+        return uiActions
+    end,
+}

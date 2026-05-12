@@ -1,26 +1,30 @@
-local internal = RunDirectorBoonBans_Internal
+local logic = {}
 
-function internal.RegisterHooks(host, store)
+function logic.bind(data)
     local runStateModule = import("mods/logic/run_state.lua")
     local banResolverModule = import("mods/logic/ban_resolver.lua")
-    import("mods/logic/acquisition.lua")
-    import("mods/logic/npc_logic.lua")
-    import("mods/logic/loot_logic.lua")
+    local acquisition = import("mods/logic/acquisition.lua").bind(data)
+    local npcLogic = import("mods/logic/npc_logic.lua").bind(data)
+    local lootLogic = import("mods/logic/loot_logic.lua").bind(data)
 
-    local runState = runStateModule.create(store)
-    local banResolver = banResolverModule.create(
-        internal.catalog,
-        internal.banPools,
-        internal.banConfig,
-        store,
-        runState,
-        internal.godDefs
-    )
+    function logic.registerHooks(host, store)
+        local runState = runStateModule.create(store)
+        local banResolver = banResolverModule.create(
+            data.catalog,
+            data.banPools,
+            data.banConfig,
+            store,
+            runState,
+            data.godDefs
+        )
 
-    host.logIf("[Micro] GodCatalog populated.")
-    internal.RegisterAcquisitionHooks(host, runState, banResolver)
-    internal.RegisterNpcHooks(host, store, banResolver)
-    internal.RegisterLootHooks(host, store, runState, banResolver)
+        host.logIf("[Micro] GodCatalog populated.")
+        acquisition.registerHooks(host, runState, banResolver)
+        npcLogic.registerHooks(host, store, banResolver)
+        lootLogic.registerHooks(host, store, runState, banResolver)
+    end
+
+    return logic
 end
 
-return internal
+return logic

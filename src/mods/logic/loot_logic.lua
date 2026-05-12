@@ -1,10 +1,8 @@
 ---@meta _
 ---@diagnostic disable: lowercase-global
-
-local internal = RunDirectorBoonBans_Internal
-local banConfig = internal.banConfig
-local banPools = internal.banPools
-local godDefs = internal.godDefs
+local banConfig = nil
+local banPools = nil
+local godDefs = nil
 
 local isKeepsakeOffering = false
 local skipIsTraitEligible = false
@@ -49,9 +47,18 @@ local function GeneratePriorityQueue(allowed, isHammer, queueMaxSize, host)
     return queue, duoLegendaryQueue
 end
 
-function internal.RegisterLootHooks(host, store, runState, banResolver)
+local module = {}
 
-lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
+function module.bind(data)
+    banConfig = data.banConfig
+    banPools = data.banPools
+    godDefs = data.godDefs
+    return module
+end
+
+function module.registerHooks(host, store, runState, banResolver)
+
+lib.hooks.Wrap("GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
     if not host.isEnabled() then return base(upgradeOptions, lootData, upgradeChoiceData) end
 
     local currentGodKey = banResolver.getGodFromLootsource(lootData.Name)
@@ -128,14 +135,14 @@ lib.hooks.Wrap(internal, "GetEligibleUpgrades", function(base, upgradeOptions, l
     return queue
 end)
 
-lib.hooks.Wrap(internal, "GetReplacementTraits", function(base, traitNames, onlyFromLootName)
+lib.hooks.Wrap("GetReplacementTraits", function(base, traitNames, onlyFromLootName)
     skipIsTraitEligible = true
     local result = base(traitNames, onlyFromLootName)
     skipIsTraitEligible = false
     return result
 end)
 
-lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
+lib.hooks.Wrap("SetTraitsOnLoot", function(base, lootData, args)
     base(lootData, args)
 
     -- Consume pending state unconditionally to prevent stale values on next call.
@@ -252,7 +259,7 @@ lib.hooks.Wrap(internal, "SetTraitsOnLoot", function(base, lootData, args)
     end
 end)
 
-lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
+lib.hooks.Wrap("IsTraitEligible", function(base, traitData, args)
     if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
 
     if banResolver.shouldBlockTraitEligibility(traitData.Name, { isKeepsakeOffering = isKeepsakeOffering }) then
@@ -263,14 +270,14 @@ lib.hooks.Wrap(internal, "IsTraitEligible", function(base, traitData, args)
     return base(traitData, args)
 end)
 
-lib.hooks.Wrap(internal, "GiveRandomHadesBoonAndBoostBoons", function(base, args)
+lib.hooks.Wrap("GiveRandomHadesBoonAndBoostBoons", function(base, args)
     isKeepsakeOffering = true
     local result = base(args)
     isKeepsakeOffering = false
     return result
 end)
 
-lib.hooks.Wrap(internal, "GetRarityChances", function(base, loot)
+lib.hooks.Wrap("GetRarityChances", function(base, loot)
     local chances = base(loot)
     if host.isEnabled() and runState.shouldForceRarity(loot) then
         chances.Common, chances.Rare, chances.Epic = 0.0, 0.0, 1.0
@@ -278,7 +285,7 @@ lib.hooks.Wrap(internal, "GetRarityChances", function(base, loot)
     return chances
 end)
 
-lib.hooks.Wrap(internal, "HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
+lib.hooks.Wrap("HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
     local targetBoon = store.read("BridalGlowTargetBoon")
     if not targetBoon or targetBoon == "" then
         base(args, origTraitData, contextArgs)
@@ -312,3 +319,5 @@ lib.hooks.Wrap(internal, "HeraSuperchargeBoon", function(base, args, origTraitDa
 end)
 
 end
+
+return module

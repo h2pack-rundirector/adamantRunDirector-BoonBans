@@ -1,10 +1,11 @@
-local internal = RunDirectorBoonBans_Internal
 local uiData, uiActions = nil, nil
-local banConfig = internal.banConfig
-local banPools = internal.banPools
+local banConfig = nil
+local banPools = nil
 local components = {}
 
-function components.bind(model, actions)
+function components.bind(data, model, actions)
+    banConfig = data.banConfig
+    banPools = data.banPools
     uiData = model
     uiActions = actions
     return components

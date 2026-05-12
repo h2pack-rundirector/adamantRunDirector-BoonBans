@@ -1,4 +1,4 @@
--- luacheck: globals TestNpcLogic RunDirectorBoonBans_Internal lib MetaUpgradeData GameState CurrentRun
+-- luacheck: globals TestNpcLogic MetaUpgradeData GameState CurrentRun lib
 -- luacheck: globals IsGameStateEligible GetTotalHeroTraitValue
 
 local lu = require("luaunit")
@@ -9,7 +9,7 @@ function TestNpcLogic:setUp()
     self.wraps = {}
     lib = {
         hooks = {
-            Wrap = function(_, funcName, callback)
+            Wrap = function(funcName, callback)
                 self.wraps[funcName] = callback
             end,
         },
@@ -35,7 +35,7 @@ function TestNpcLogic:setUp()
         return name == "PostBossCards" and 3 or 0
     end
 
-    RunDirectorBoonBans_Internal = {
+    self.data = {
         catalog = {
             entries = {
                 CirceBNB = {
@@ -80,8 +80,8 @@ function TestNpcLogic:setUp()
         end,
     }
 
-    dofile("src/mods/logic/npc_logic.lua")
-    RunDirectorBoonBans_Internal.RegisterNpcHooks(self.host, {}, self.banResolver)
+    local npcLogic = dofile("src/mods/logic/npc_logic.lua").bind(self.data)
+    npcLogic.registerHooks(self.host, {}, self.banResolver)
 end
 
 function TestNpcLogic:testNpcChoiceFiltersBannedAndIneligibleOptions()

@@ -1,4 +1,3 @@
-local internal = RunDirectorBoonBans_Internal
 _G.bit32 = _G.bit32 or require("bit32")
 
 local definitions = import("mods/data/definitions.lua")
@@ -13,8 +12,11 @@ local banPools = banPoolsModule.create(godDefs, baseBoonCatalog)
 local banConfig = banConfigModule.create(godDefs, banPools)
 local catalog = catalogModule.build(godDefs, baseBoonCatalog)
 
-internal.godDefs = godDefs
-internal.banPools = banPools
-internal.banConfig = banConfig
-internal.catalog = catalog
-internal.storage = storageSchema.buildStorage(godDefs, baseBoonCatalog, banPools)
+return {
+    godDefs = godDefs,
+    baseBoonCatalog = baseBoonCatalog,
+    banPools = banPools,
+    banConfig = banConfig,
+    catalog = catalog,
+    storage = storageSchema.buildStorage(godDefs, baseBoonCatalog, banPools),
+}

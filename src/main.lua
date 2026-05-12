@@ -17,39 +17,34 @@ local config = chalk.auto("config.lua")
 local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
----@class RunDirectorBoonBansInternal
----@field standaloneUi StandaloneRuntime|nil
----@field RegisterHooks fun(host: AuthorHost, store: ManagedStore)|nil
----@field DrawTab fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
----@field DrawQuickContent fun(imgui: table, session: AuthorSession, host: AuthorHost)|nil
-RunDirectorBoonBans_Internal = RunDirectorBoonBans_Internal or {}
----@type RunDirectorBoonBansInternal
-local internal = RunDirectorBoonBans_Internal
 
-internal.standaloneUi = nil
+MODULE_ANCHOR = MODULE_ANCHOR or {}
+local moduleAnchor = MODULE_ANCHOR
+
+moduleAnchor.standaloneUi = nil
 
 local function registerGui()
     rom.gui.add_imgui(function()
-        if internal.standaloneUi and internal.standaloneUi.renderWindow then
-            internal.standaloneUi.renderWindow()
+        if moduleAnchor.standaloneUi and moduleAnchor.standaloneUi.renderWindow then
+            moduleAnchor.standaloneUi.renderWindow()
         end
     end)
 
     rom.gui.add_to_menu_bar(function()
-        if internal.standaloneUi and internal.standaloneUi.addMenuBar then
-            internal.standaloneUi.addMenuBar()
+        if moduleAnchor.standaloneUi and moduleAnchor.standaloneUi.addMenuBar then
+            moduleAnchor.standaloneUi.addMenuBar()
         end
     end)
 end
 
 local function init()
     import_as_fallback(rom.game)
-    import("mods/data.lua")
-    import("mods/logic.lua")
-    import("mods/ui.lua")
+    local data = import("mods/data.lua")
+    local logic = import("mods/logic.lua").bind(data)
+    local ui = import("mods/ui.lua").bind(data)
 
     local host = lib.createModule({
-        owner = internal,
+        owner = moduleAnchor,
         pluginGuid = PLUGIN_GUID,
         config = config,
         definition = {
@@ -57,17 +52,17 @@ local function init()
             id = MODULE_ID,
             name = "Boon Bans",
             tooltip = "Ban boon offerings and force rarity behavior.",
-            storage = internal.storage,
+            storage = data.storage,
         },
-        registerHooks = internal.RegisterHooks,
-        drawTab = internal.DrawTab,
-        drawQuickContent = internal.DrawQuickContent,
+        registerHooks = logic.registerHooks,
+        drawTab = ui.drawTab,
+        drawQuickContent = ui.drawQuickContent,
     })
     host.activate()
     if not lib.isModuleCoordinated(PACK_ID) then
-        internal.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
+        moduleAnchor.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
     else
-        internal.standaloneUi = nil
+        moduleAnchor.standaloneUi = nil
     end
 end
 

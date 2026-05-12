@@ -1,4 +1,4 @@
--- luacheck: globals TestAcquisitionLogic TraitData
+-- luacheck: globals TestAcquisitionLogic TraitData lib
 
 local lu = require("luaunit")
 
@@ -52,7 +52,7 @@ function TestAcquisitionLogic:setUp()
     self.wraps = {}
     lib = {
         hooks = {
-            Wrap = function(_, funcName, ...)
+            Wrap = function(funcName, ...)
                 local args = { ... }
                 self.wraps[funcName] = args[#args]
             end,
@@ -64,7 +64,7 @@ function TestAcquisitionLogic:setUp()
         ZeusStrikeBoon = {},
     }
 
-    RunDirectorBoonBans_Internal = {
+    self.data = {
         banConfig = {
             ResolveGodKey = function(key)
                 return key
@@ -97,8 +97,8 @@ function TestAcquisitionLogic:setUp()
         end,
     }
 
-    dofile("src/mods/logic/acquisition.lua")
-    RunDirectorBoonBans_Internal.RegisterAcquisitionHooks(self.host, self.runState, self.banResolver)
+    local acquisition = dofile("src/mods/logic/acquisition.lua").bind(self.data)
+    acquisition.registerHooks(self.host, self.runState, self.banResolver)
 end
 
 function TestAcquisitionLogic:testDuoAcquisitionUsesRememberedOfferSource()
