@@ -13,13 +13,13 @@ local function DrawSettingsTab(ui, session, host)
     })
 
     ui.Spacing()
-    lib.widgets.confirmButton(ui, "boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
+    lib.widgets.confirmButton(ui, session, "boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
             uiActions.ResetAllBans(session, host)
         end,
     })
-    lib.widgets.confirmButton(ui, "boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
+    lib.widgets.confirmButton(ui, session, "boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
             uiActions.ResetAllRarity(session)
@@ -62,7 +62,7 @@ function module.drawTab(ui, session, host)
 end
 
 function module.drawQuickContent(ui, session, host)
-    lib.widgets.confirmButton(ui, "boon_bans_quick_reset_all", "Reset To Default", {
+    lib.widgets.confirmButton(ui, session, "boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
             uiActions.ResetAllControls(session, host)

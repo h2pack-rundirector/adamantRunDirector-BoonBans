@@ -22,7 +22,7 @@ function components.DrawBanSearchControls(ui, session, idSuffix)
         controlWidth = 180,
     })
     ui.SameLine()
-    lib.widgets.button(ui, "Clear", {
+    lib.widgets.button(ui, session, "Clear", {
         id = "boon_bans_filter_clear_" .. idSuffix,
         onClick = function()
             session.reset(uiData.BAN_FILTER_TEXT_ALIAS)
@@ -161,14 +161,14 @@ function components.DrawBanPanel(ui, session, host, banPoolKey, idPrefix)
     ui.SameLine()
     ui.SetCursorPosX(ui.GetCursorPosX() + 100)
 
-    lib.widgets.button(ui, "Ban All", {
+    lib.widgets.button(ui, session, "Ban All", {
         id = idPrefix .. "_ban_all_" .. banPoolKey,
         onClick = function()
             uiActions.BanAllGodBans(banPoolKey, session, host)
         end,
     })
     ui.SameLine()
-    lib.widgets.button(ui, "Reset", {
+    lib.widgets.button(ui, session, "Reset", {
         id = idPrefix .. "_reset_" .. banPoolKey,
         onClick = function()
             uiActions.ResetGodBans(banPoolKey, session, host)
