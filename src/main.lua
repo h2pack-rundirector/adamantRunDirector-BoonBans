@@ -17,24 +17,11 @@ local config = chalk.auto("config.lua")
 local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
-
-MODULE_ANCHOR = MODULE_ANCHOR or {}
-local moduleAnchor = MODULE_ANCHOR
-
-moduleAnchor.standaloneUi = nil
+local standaloneUi = lib.standaloneUiBridge(PLUGIN_GUID)
 
 local function registerGui()
-    rom.gui.add_imgui(function()
-        if moduleAnchor.standaloneUi and moduleAnchor.standaloneUi.renderWindow then
-            moduleAnchor.standaloneUi.renderWindow()
-        end
-    end)
-
-    rom.gui.add_to_menu_bar(function()
-        if moduleAnchor.standaloneUi and moduleAnchor.standaloneUi.addMenuBar then
-            moduleAnchor.standaloneUi.addMenuBar()
-        end
-    end)
+    rom.gui.add_imgui(standaloneUi.renderWindow)
+    rom.gui.add_to_menu_bar(standaloneUi.addMenuBar)
 end
 
 local function init()
@@ -44,7 +31,6 @@ local function init()
     local ui = import("mods/ui.lua").bind(data)
 
     local host = lib.tryCreateModule({
-        owner = moduleAnchor,
         pluginGuid = PLUGIN_GUID,
         config = config,
         definition = {
@@ -67,11 +53,7 @@ local function init()
         return
     end
 
-    if not lib.coordinator.isRegistered(PACK_ID) then
-        moduleAnchor.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
-    else
-        moduleAnchor.standaloneUi = nil
-    end
+    lib.standaloneHost(PLUGIN_GUID)
 end
 
 local loader = reload.auto_single()

@@ -7,7 +7,7 @@ require("tests/TestUtils")
 TestUiModel = {}
 
 function TestUiModel:setUp()
-    self.ui, self.moduleAnchor, self.state = ResetBoonBansUiHarness()
+    self.ui, self.uiData, self.state = ResetBoonBansUiHarness()
 end
 
 function TestUiModel:testBuildPackedBanDisplayValuesUsesSpecialLabels()
