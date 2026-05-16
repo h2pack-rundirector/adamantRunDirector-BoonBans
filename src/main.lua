@@ -67,7 +67,7 @@ local function init()
         return
     end
 
-    if not lib.isModuleCoordinated(PACK_ID) then
+    if not lib.coordinator.isRegistered(PACK_ID) then
         moduleAnchor.standaloneUi = lib.standaloneHost(PLUGIN_GUID)
     else
         moduleAnchor.standaloneUi = nil
