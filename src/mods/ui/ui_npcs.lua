@@ -65,7 +65,8 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawRegionFilter(ui, session)
+local function DrawRegionFilter(ctx)
+    local ui = ctx.imgui
     local displayValues = {}
     local values = {}
     for _, option in ipairs(uiData.NPC_REGION_OPTIONS) do
@@ -76,7 +77,7 @@ local function DrawRegionFilter(ui, session)
     ui.AlignTextToFramePadding()
     ui.Text("Filter NPC Sources:")
     ui.SameLine()
-    lib.widgets.radio(ui, session, uiData.NPC_VIEW_REGION_ALIAS, {
+    ctx.widgets.radio(uiData.NPC_VIEW_REGION_ALIAS, {
         label = "",
         values = values,
         displayValues = displayValues,
@@ -84,13 +85,16 @@ local function DrawRegionFilter(ui, session)
     })
 end
 
-local function DrawNpcsTab(ui, session, host)
-    DrawRegionFilter(ui, session)
+local function DrawNpcsTab(ctx)
+    local ui = ctx.imgui
+    local session = ctx.session
+
+    DrawRegionFilter(ctx)
     ui.Spacing()
 
     local visibleRoots = GetVisibleNpcRoots(session)
     if #visibleRoots == 0 then
-        lib.widgets.text(ui, "No NPC sources match the current filter.", {
+        ctx.widgets.text("No NPC sources match the current filter.", {
             color = uiData.MUTED_TEXT_COLOR,
         })
         return
@@ -121,11 +125,11 @@ local function DrawNpcsTab(ui, session, host)
     ui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if ui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if ui.BeginTabItem("Bans") then
-            components.DrawBanPanel(ui, session, host, root.primaryGodKey, "npcs")
+            components.DrawBanPanel(ctx, root.primaryGodKey, "npcs")
             ui.EndTabItem()
         end
         if root.hasRarity and ui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(ui, session, root)
+            components.DrawRarityPanel(ctx, root)
             ui.EndTabItem()
         end
         ui.EndTabBar()

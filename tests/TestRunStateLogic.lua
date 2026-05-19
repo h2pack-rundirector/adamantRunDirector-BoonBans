@@ -19,11 +19,11 @@ function TestRunStateLogic:setUp()
         return true
     end
     lib = {
-        gameObject = {
+        gameCache = {
             get = function(object, packId, moduleId, key, factory)
-                object.__testGameObject = object.__testGameObject or {}
-                local pack = object.__testGameObject[packId] or {}
-                object.__testGameObject[packId] = pack
+                object.__testGameCache = object.__testGameCache or {}
+                local pack = object.__testGameCache[packId] or {}
+                object.__testGameCache[packId] = pack
                 local module = pack[moduleId] or {}
                 pack[moduleId] = module
                 if module[key] == nil then

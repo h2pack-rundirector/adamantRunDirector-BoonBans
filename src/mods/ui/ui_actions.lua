@@ -41,13 +41,13 @@ function uiActions.SetBanMask(banPoolKey, value, session)
 
     local mask = banPools.getBanMask(banPoolKey)
     local nextValue = band(value or 0, mask)
-    local handle, bindAlias = banConfig.ResolveBanBinding(banPoolKey, session)
+    local fields = banConfig.ResolveBanFields(banPoolKey, session)
 
-    local currentValue = handle.read(bindAlias) or 0
+    local currentValue = fields.bans:read() or 0
     if currentValue == nextValue then
         return false
     end
-    handle.write(bindAlias, nextValue)
+    fields.bans:write(nextValue)
     return true
 end
 

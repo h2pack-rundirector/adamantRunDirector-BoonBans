@@ -77,12 +77,12 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawForcePanel(ui, session, root)
-    lib.widgets.text(ui, "Setup")
-    lib.widgets.separator(ui)
-    components.DrawConfiguredBanPoolControl(ui, session, root)
+local function DrawForcePanel(ctx, root)
+    ctx.widgets.text("Setup")
+    ctx.widgets.separator()
+    components.DrawConfiguredBanPoolControl(ctx, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(ui, session, root, banPool)
+        components.DrawForceBanRow(ctx, root, banPool)
     end
 end
 
@@ -180,16 +180,18 @@ local function GetCurrentBridalGlowTargetText(selectedBoonKey)
     return "Current Target: Random"
 end
 
-local function DrawBridalGlowPanel(ui, session)
+local function DrawBridalGlowPanel(ctx)
+    local ui = ctx.imgui
+    local session = ctx.session
     local selectedBoonKey = session.view.BridalGlowTargetBoon or ""
     local eligibleRoots = GetBridalGlowEligibleRoots(session)
 
-    lib.widgets.text(ui, "Choose the Olympian god and boon pool Bridal Glow can target.")
-    lib.widgets.text(ui, GetCurrentBridalGlowTargetText(selectedBoonKey))
-    lib.widgets.separator(ui)
+    ctx.widgets.text("Choose the Olympian god and boon pool Bridal Glow can target.")
+    ctx.widgets.text(GetCurrentBridalGlowTargetText(selectedBoonKey))
+    ctx.widgets.separator()
 
     if #eligibleRoots == 0 then
-        lib.widgets.text(ui, "No eligible Olympian gods are currently available.", {
+        ctx.widgets.text("No eligible Olympian gods are currently available.", {
             color = uiData.MUTED_TEXT_COLOR,
         })
         return
@@ -200,10 +202,10 @@ local function DrawBridalGlowPanel(ui, session)
     local eligibleBoons = GetBridalGlowEligibleBoons(selectedRoot)
 
     ui.BeginChild("BoonBansBridalGlowGods", 220, 220, true)
-    lib.widgets.text(ui, "Eligible Gods", {
+    ctx.widgets.text("Eligible Gods", {
         color = uiData.MUTED_TEXT_COLOR,
     })
-    lib.widgets.separator(ui)
+    ctx.widgets.separator()
     for _, root in ipairs(eligibleRoots) do
         if ui.Selectable(root.label, root.id == selectedRootId) then
             session.write(BRIDAL_GLOW_ROOT_ALIAS, root.id)
@@ -217,10 +219,10 @@ local function DrawBridalGlowPanel(ui, session)
     ui.SameLine()
 
     ui.BeginChild("BoonBansBridalGlowBoons", 0, 220, true)
-    lib.widgets.text(ui, "Eligible Boons", {
+    ctx.widgets.text("Eligible Boons", {
         color = uiData.MUTED_TEXT_COLOR,
     })
-    lib.widgets.separator(ui)
+    ctx.widgets.separator()
     if ui.Selectable("Random", selectedBoonKey == "") then
         uiActions.SetBridalGlowTargetBoonKey(nil, session)
         selectedBoonKey = ""
@@ -234,10 +236,12 @@ local function DrawBridalGlowPanel(ui, session)
     ui.EndChild()
 end
 
-local function DrawOlympiansTab(ui, session, host)
+local function DrawOlympiansTab(ctx)
+    local ui = ctx.imgui
+    local session = ctx.session
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(session)
     if #visibleRoots == 0 then
-        lib.widgets.text(ui, "No Olympians are currently available.", {
+        ctx.widgets.text("No Olympians are currently available.", {
             color = uiData.MUTED_TEXT_COLOR,
         })
         return
@@ -266,7 +270,7 @@ local function DrawOlympiansTab(ui, session, host)
 
     ui.BeginChild("BoonBansOlympiansDetail", 0, 0, false)
     if godPoolFiltering then
-        lib.widgets.text(ui, string.format("Showing %d Olympians enabled in God Pool.", #visibleRoots), {
+        ctx.widgets.text(string.format("Showing %d Olympians enabled in God Pool.", #visibleRoots), {
             color = uiData.MUTED_TEXT_COLOR,
         })
         ui.Spacing()
@@ -274,21 +278,21 @@ local function DrawOlympiansTab(ui, session, host)
 
     if ui.BeginTabBar("BoonBansOlympiansViews##" .. root.id) then
         if ui.BeginTabItem("Setup") then
-            DrawForcePanel(ui, session, root)
+            DrawForcePanel(ctx, root)
             ui.EndTabItem()
         end
         for _, banPool in ipairs(root.banPools) do
             if ui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(ui, session, host, banPool.key, "olympians")
+                components.DrawBanPanel(ctx, banPool.key, "olympians")
                 ui.EndTabItem()
             end
         end
         if ui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(ui, session, root)
+            components.DrawRarityPanel(ctx, root)
             ui.EndTabItem()
         end
         if root.hasBridalGlow and ui.BeginTabItem("Bridal Glow Target") then
-            DrawBridalGlowPanel(ui, session)
+            DrawBridalGlowPanel(ctx)
             ui.EndTabItem()
         end
         ui.EndTabBar()

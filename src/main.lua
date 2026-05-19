@@ -33,13 +33,11 @@ local function init()
     local host = lib.tryCreateModule({
         pluginGuid = PLUGIN_GUID,
         config = config,
-        definition = {
-            modpack = PACK_ID,
-            id = MODULE_ID,
-            name = "Boon Bans",
-            tooltip = "Ban boon offerings and force rarity behavior.",
-            storage = data.storage,
-        },
+        modpack = PACK_ID,
+        id = MODULE_ID,
+        name = "Boon Bans",
+        tooltip = "Ban boon offerings and force rarity behavior.",
+        storage = data.storage,
         registerHooks = logic.registerHooks,
         drawTab = ui.drawTab,
         drawQuickContent = ui.drawQuickContent,

@@ -106,11 +106,23 @@ function TestDataLogic.testBanConfigProjectsStoreAndSessionThroughTableRows()
                     return #rows
                 end,
                 rowHandle = function(_, index)
-                    return {
+                    local row = {
                         read = function(childAlias)
                             return rows[index][childAlias]
                         end,
                     }
+                    function row.field(selfOrAlias, maybeAlias)
+                        local childAlias = selfOrAlias == row and maybeAlias or selfOrAlias
+                        return {
+                            read = function()
+                                return row.read(childAlias)
+                            end,
+                            alias = function()
+                                return childAlias
+                            end,
+                        }
+                    end
+                    return row
                 end,
             }
         end,

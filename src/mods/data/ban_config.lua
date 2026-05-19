@@ -48,20 +48,23 @@ local function CreateBanConfig(godDefs, banPools)
         return resolvedBanPoolIndex <= banConfig.GetConfiguredBanPoolCount(godKey, handle)
     end
 
-    function banConfig.ResolveBanBinding(banPoolKey, handle)
+    function banConfig.ResolveBanFields(banPoolKey, handle)
         if not godDefs[banPoolKey] then
-            return nil, nil
+            return nil
         end
 
         local tableHandle = handle.table(banPools.getTableAlias(banPoolKey))
-        return tableHandle:rowHandle(banPools.getBanPoolIndex(banPoolKey)), banPools.BAN_POOL_ALIAS
+        local row = tableHandle:rowHandle(banPools.getBanPoolIndex(banPoolKey))
+        return {
+            bans = row:field(banPools.BAN_POOL_ALIAS),
+        }
     end
 
     function banConfig.GetBanMask(banPoolKey, handle)
         if not godDefs[banPoolKey] then return 0 end
 
-        local boundHandle, bindAlias = banConfig.ResolveBanBinding(banPoolKey, handle)
-        local val = boundHandle.read(bindAlias) or 0
+        local fields = banConfig.ResolveBanFields(banPoolKey, handle)
+        local val = fields.bans:read() or 0
         return band(val, banPools.getBanMask(banPoolKey))
     end
 

@@ -5,21 +5,25 @@ local hammersUi = nil
 local npcsUi = nil
 local otherGodsUi = nil
 
-local function DrawSettingsTab(ui, session, host)
-    lib.widgets.dropdown(ui, session, "ImproveFirstNBoonRarity", {
+local function DrawSettingsTab(ctx)
+    local ui = ctx.imgui
+    local session = ctx.session
+    local host = ctx.host
+
+    ctx.widgets.dropdown("ImproveFirstNBoonRarity", {
         label = "Force First N Boons to Be Epic",
         values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
         controlWidth = 60,
     })
 
     ui.Spacing()
-    lib.widgets.confirmButton(ui, session, "boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
+    ctx.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
             uiActions.ResetAllBans(session, host)
         end,
     })
-    lib.widgets.confirmButton(ui, session, "boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
+    ctx.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
             uiActions.ResetAllRarity(session)
@@ -27,33 +31,35 @@ local function DrawSettingsTab(ui, session, host)
     })
 end
 
-function module.drawTab(ui, session, host)
+function module.drawTab(ctx)
+    local ui = ctx.imgui
+
     if not ui.BeginTabBar("BoonBansLeanTabs") then
         return false
     end
 
     if ui.BeginTabItem("Olympians") then
-        olympiansUi.draw(ui, session, host)
+        olympiansUi.draw(ctx)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Other Gods") then
-        otherGodsUi.draw(ui, session, host)
+        otherGodsUi.draw(ctx)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Hammers") then
-        hammersUi.draw(ui, session, host)
+        hammersUi.draw(ctx)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("NPCs") then
-        npcsUi.draw(ui, session, host)
+        npcsUi.draw(ctx)
         ui.EndTabItem()
     end
 
     if ui.BeginTabItem("Settings") then
-        DrawSettingsTab(ui, session, host)
+        DrawSettingsTab(ctx)
         ui.EndTabItem()
     end
 
@@ -61,11 +67,11 @@ function module.drawTab(ui, session, host)
     return false
 end
 
-function module.drawQuickContent(ui, session, host)
-    lib.widgets.confirmButton(ui, session, "boon_bans_quick_reset_all", "Reset To Default", {
+function module.drawQuickContent(ctx)
+    ctx.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            uiActions.ResetAllControls(session, host)
+            uiActions.ResetAllControls(ctx.session, ctx.host)
         end,
     })
 end

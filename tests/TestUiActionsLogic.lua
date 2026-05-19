@@ -85,9 +85,22 @@ function TestUiActionsLogic:setUp()
             GetMaxConfigurableBanPools = function()
                 return 3
             end,
-            ResolveBanBinding = function(banPoolKey, session)
+            ResolveBanFields = function(banPoolKey, session)
                 local index = banPoolKey == "Apollo2" and 2 or 1
-                return session.table("ApolloBanPools"):rowHandle(index), "Bans"
+                local row = session.table("ApolloBanPools"):rowHandle(index)
+                return {
+                    bans = {
+                        read = function()
+                            return row.read("Bans")
+                        end,
+                        write = function(_, value)
+                            return row.write("Bans", value)
+                        end,
+                        alias = function()
+                            return "Bans"
+                        end,
+                    },
+                }
             end,
         },
     }

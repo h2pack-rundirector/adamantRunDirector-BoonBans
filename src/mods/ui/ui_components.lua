@@ -11,18 +11,20 @@ function components.bind(data, model, actions)
     return components
 end
 
-function components.DrawBanSearchControls(ui, session, idSuffix)
+function components.DrawBanSearchControls(ctx, idSuffix)
+    local ui = ctx.imgui
+    local session = ctx.session
     idSuffix = tostring(idSuffix or "")
 
     ui.AlignTextToFramePadding()
     ui.Text("Filter:")
     ui.SameLine()
-    lib.widgets.inputText(ui, session, uiData.BAN_FILTER_TEXT_ALIAS, {
+    ctx.widgets.inputText(uiData.BAN_FILTER_TEXT_ALIAS, {
         label = "",
         controlWidth = 180,
     })
     ui.SameLine()
-    lib.widgets.button(ui, session, "Clear", {
+    ctx.widgets.button("Clear", {
         id = "boon_bans_filter_clear_" .. idSuffix,
         onClick = function()
             session.reset(uiData.BAN_FILTER_TEXT_ALIAS)
@@ -30,36 +32,35 @@ function components.DrawBanSearchControls(ui, session, idSuffix)
     })
 end
 
-function components.DrawFilteredPackedBanList(ui, session, banPoolKey, opts)
+function components.DrawFilteredPackedBanList(ctx, banPoolKey, opts)
     opts = opts or {}
+    local session = ctx.session
     local filterText = tostring(session and session.view and session.view[uiData.BAN_FILTER_TEXT_ALIAS] or "")
-    local handle, bindAlias = banConfig.ResolveBanBinding(banPoolKey, session)
-    if not handle or not bindAlias then
+    local fields = banConfig.ResolveBanFields(banPoolKey, session)
+    if not fields then
         return
     end
 
-    lib.widgets.packedCheckboxList(ui, handle, bindAlias, {
+    ctx.widgets.packedCheckboxList(fields.bans, {
         valueColors = opts.valueColors or uiData.BuildPackedBanValueColors(banPoolKey),
         slotCount = opts.slotCount or #uiData.GetBanPoolBoons(banPoolKey),
         filterText = filterText,
     })
 
     if uiData.GetVisibleBanCount(banPoolKey, session) == 0 then
-        lib.widgets.text(ui, "No boons match the current filter.", {
+        ctx.widgets.text("No boons match the current filter.", {
             color = uiData.MUTED_TEXT_COLOR,
         })
     end
 end
 
-local function GetSingleForcedBoon(banPoolKey, session, handle, bindAlias)
-    if not handle or not bindAlias then
-        handle, bindAlias = banConfig.ResolveBanBinding(banPoolKey, session)
-    end
-    if not handle or not bindAlias then
+local function GetSingleForcedBoon(ctx, banPoolKey, fields)
+    fields = fields or banConfig.ResolveBanFields(banPoolKey, ctx.session)
+    if not fields then
         return nil
     end
 
-    local selectedAlias = lib.widgets.getPackedChoiceAlias(handle, bindAlias, {
+    local selectedAlias = ctx.widgets.getPackedChoiceAlias(fields.bans, {
         selectionMode = "singleDisabled",
     })
     if not selectedAlias then
@@ -67,14 +68,16 @@ local function GetSingleForcedBoon(banPoolKey, session, handle, bindAlias)
     end
 
     for _, boon in ipairs(uiData.GetBanPoolBoons(banPoolKey)) do
-        local childAlias = banPools.makeBanAlias(bindAlias, boon.Key)
+        local childAlias = banPools.makeBanAlias(fields.bans:alias(), boon.Key)
         if childAlias == selectedAlias then
             return boon
         end
     end
 end
 
-function components.DrawConfiguredBanPoolControl(ui, session, root)
+function components.DrawConfiguredBanPoolControl(ctx, root)
+    local ui = ctx.imgui
+    local session = ctx.session
     if not root or not root.primaryGodKey or (root.maxBanPools or 1) <= 1 then
         return
     end
@@ -103,12 +106,13 @@ function components.DrawConfiguredBanPoolControl(ui, session, root)
     ui.Spacing()
 end
 
-function components.DrawForcedBoonRarityShortcut(ui, session, root, banPool, handle, bindAlias)
+function components.DrawForcedBoonRarityShortcut(ctx, root, banPool, fields)
+    local ui = ctx.imgui
     if not root or not root.hasRarity or not banPool then
         return
     end
 
-    local forcedBoon = GetSingleForcedBoon(banPool.key, session, handle, bindAlias)
+    local forcedBoon = GetSingleForcedBoon(ctx, banPool.key, fields)
     if not forcedBoon or forcedBoon.IsRarityEligible == false then
         return
     end
@@ -120,7 +124,7 @@ function components.DrawForcedBoonRarityShortcut(ui, session, root, banPool, han
 
     ui.SameLine()
     ui.SetCursorPosX(330)
-    lib.widgets.dropdown(ui, session, rarityAlias, {
+    ctx.widgets.dropdown(rarityAlias, {
         label = "Rarity",
         values = { 0, 1, 2, 3 },
         displayValues = uiData.RARITY_LABELS,
@@ -129,10 +133,12 @@ function components.DrawForcedBoonRarityShortcut(ui, session, root, banPool, han
     })
 end
 
-function components.DrawForceBanRow(ui, session, root, banPool, opts)
+function components.DrawForceBanRow(ctx, root, banPool, opts)
     opts = opts or {}
-    local handle, bindAlias = banConfig.ResolveBanBinding(banPool.key, session)
-    if not handle or not bindAlias then
+    local ui = ctx.imgui
+    local session = ctx.session
+    local fields = banConfig.ResolveBanFields(banPool.key, session)
+    if not fields then
         return
     end
 
@@ -140,7 +146,7 @@ function components.DrawForceBanRow(ui, session, root, banPool, opts)
     ui.Text(opts.label or banPool.label)
     ui.SameLine()
     ui.SetCursorPosX(opts.controlX or 80)
-    lib.widgets.packedDropdown(ui, handle, bindAlias, {
+    ctx.widgets.packedDropdown(fields.bans, {
         id = "force_" .. banPool.key,
         label = "",
         selectionMode = "singleDisabled",
@@ -152,34 +158,39 @@ function components.DrawForceBanRow(ui, session, root, banPool, opts)
     })
 
     if opts.drawRarity ~= false then
-        components.DrawForcedBoonRarityShortcut(ui, session, root, banPool, handle, bindAlias)
+        components.DrawForcedBoonRarityShortcut(ctx, root, banPool, fields)
     end
 end
 
-function components.DrawBanPanel(ui, session, host, banPoolKey, idPrefix)
-    components.DrawBanSearchControls(ui, session, banPoolKey)
+function components.DrawBanPanel(ctx, banPoolKey, idPrefix)
+    local ui = ctx.imgui
+    local session = ctx.session
+    local host = ctx.host
+
+    components.DrawBanSearchControls(ctx, banPoolKey)
     ui.SameLine()
     ui.SetCursorPosX(ui.GetCursorPosX() + 100)
 
-    lib.widgets.button(ui, session, "Ban All", {
+    ctx.widgets.button("Ban All", {
         id = idPrefix .. "_ban_all_" .. banPoolKey,
         onClick = function()
             uiActions.BanAllGodBans(banPoolKey, session, host)
         end,
     })
     ui.SameLine()
-    lib.widgets.button(ui, session, "Reset", {
+    ctx.widgets.button("Reset", {
         id = idPrefix .. "_reset_" .. banPoolKey,
         onClick = function()
             uiActions.ResetGodBans(banPoolKey, session, host)
         end,
     })
 
-    lib.widgets.separator(ui)
-    components.DrawFilteredPackedBanList(ui, session, banPoolKey)
+    ctx.widgets.separator()
+    components.DrawFilteredPackedBanList(ctx, banPoolKey)
 end
 
-function components.DrawRarityPanel(ui, session, root)
+function components.DrawRarityPanel(ctx, root)
+    local ui = ctx.imgui
     for _, boon in ipairs(uiData.GetBanPoolBoons(root.primaryGodKey)) do
         if boon.IsRarityEligible ~= false then
             local rarityAlias = banPools.getRarityAlias(root.primaryGodKey, boon.Key)
@@ -188,7 +199,7 @@ function components.DrawRarityPanel(ui, session, root)
                 ui.Text(uiData.GetBoonText(boon))
                 ui.SameLine()
                 ui.SetCursorPosX(220)
-                lib.widgets.dropdown(ui, session, rarityAlias, {
+                ctx.widgets.dropdown(rarityAlias, {
                     label = "",
                     values = { 0, 1, 2, 3 },
                     displayValues = uiData.RARITY_LABELS,

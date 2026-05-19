@@ -13,7 +13,7 @@ local function create(store)
 
     local function GetCache()
         if not CurrentRun then return nil end
-        local cache = lib.gameObject.get(CurrentRun, PACK_ID, MODULE_ID, "run", function()
+        local cache = lib.gameCache.get(CurrentRun, PACK_ID, MODULE_ID, "run", function()
             return {
                 BanPoolPickCounts = {},
                 ImproveFirstNBoonRarity = store.read("ImproveFirstNBoonRarity") or 0,
