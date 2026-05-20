@@ -8,7 +8,7 @@ function logic.bind(data)
     local lootLogic = import("mods/logic/loot_logic.lua").bind(data)
 
     function logic.registerHooks(host, store)
-        local runState = runStateModule.create(store)
+        local runState = runStateModule.create(host, store)
         local banResolver = banResolverModule.create(
             data.catalog,
             data.banPools,

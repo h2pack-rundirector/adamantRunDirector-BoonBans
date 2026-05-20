@@ -7,13 +7,7 @@ TestNpcLogic = {}
 
 function TestNpcLogic:setUp()
     self.wraps = {}
-    lib = {
-        hooks = {
-            Wrap = function(funcName, callback)
-                self.wraps[funcName] = callback
-            end,
-        },
-    }
+    lib = {}
     MetaUpgradeData = {
         VowA = { IneligibleForCirceRemoval = false },
         VowB = { IneligibleForCirceRemoval = false },
@@ -69,6 +63,11 @@ function TestNpcLogic:setUp()
     }
 
     self.host = {
+        hooks = {
+            wrap = function(funcName, callback)
+                self.wraps[funcName] = callback
+            end,
+        },
         isEnabled = function()
             return true
         end,

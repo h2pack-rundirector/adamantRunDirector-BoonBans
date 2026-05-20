@@ -24,13 +24,7 @@ end
 
 function TestLootLogic:setUp()
     self.wraps = {}
-    lib = {
-        hooks = {
-            Wrap = function(funcName, callback)
-                self.wraps[funcName] = callback
-            end,
-        },
-    }
+    lib = {}
     TraitData = {
         Allowed = {},
         Banned = {},
@@ -66,6 +60,11 @@ function TestLootLogic:setUp()
     }
 
     self.host = {
+        hooks = {
+            wrap = function(funcName, callback)
+                self.wraps[funcName] = callback
+            end,
+        },
         isEnabled = function()
             return true
         end,

@@ -15,7 +15,7 @@ function module.bind(data)
 end
 
 function module.registerHooks(host, store, banResolver)
-    lib.hooks.Wrap("CirceRemoveShrineUpgrades", function(base, args)
+    host.hooks.wrap("CirceRemoveShrineUpgrades", function(base, args)
         if not host.isEnabled() then return base(args) end
         local restores = {}
         if godCatalog["CirceBNB"] then
@@ -35,7 +35,7 @@ function module.registerHooks(host, store, banResolver)
         end
     end)
 
-    lib.hooks.Wrap("CirceRandomMetaUpgrade", function(base, args)
+    host.hooks.wrap("CirceRandomMetaUpgrade", function(base, args)
         if not host.isEnabled() then return base(args) end
         local restores = {}
         local metaState = GameState.MetaUpgradeState or {}
@@ -56,7 +56,7 @@ function module.registerHooks(host, store, banResolver)
         end
     end)
 
-    lib.hooks.Wrap("AddRandomMetaUpgrades", function(base, numCards, args)
+    host.hooks.wrap("AddRandomMetaUpgrades", function(base, numCards, args)
         if not host.isEnabled() then return base(numCards, args) end
         if numCards and numCards ~= GetTotalHeroTraitValue("PostBossCards") then return base(numCards, args) end
 
@@ -82,7 +82,7 @@ function module.registerHooks(host, store, banResolver)
     end)
 
     local function wrapNPCChoice(funcName)
-        lib.hooks.Wrap(funcName, function(base, source, args, screen)
+        host.hooks.wrap(funcName, function(base, source, args, screen)
             if host.isEnabled() and args.UpgradeOptions then
                 local allowed = {}
                 local banned = {}
@@ -114,7 +114,7 @@ function module.registerHooks(host, store, banResolver)
         end)
     end
 
-    lib.hooks.Wrap("GetEligibleSpells", function(base, screen, args)
+    host.hooks.wrap("GetEligibleSpells", function(base, screen, args)
         local eligible = base(screen, args)
         if not host.isEnabled() then return eligible end
 

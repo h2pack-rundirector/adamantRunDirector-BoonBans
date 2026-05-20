@@ -58,7 +58,7 @@ end
 
 function module.registerHooks(host, store, runState, banResolver)
 
-lib.hooks.Wrap("GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
+    host.hooks.wrap("GetEligibleUpgrades", function(base, upgradeOptions, lootData, upgradeChoiceData)
     if not host.isEnabled() then return base(upgradeOptions, lootData, upgradeChoiceData) end
 
     local currentGodKey = banResolver.getGodFromLootsource(lootData.Name)
@@ -135,14 +135,14 @@ lib.hooks.Wrap("GetEligibleUpgrades", function(base, upgradeOptions, lootData, u
     return queue
 end)
 
-lib.hooks.Wrap("GetReplacementTraits", function(base, traitNames, onlyFromLootName)
+    host.hooks.wrap("GetReplacementTraits", function(base, traitNames, onlyFromLootName)
     skipIsTraitEligible = true
     local result = base(traitNames, onlyFromLootName)
     skipIsTraitEligible = false
     return result
 end)
 
-lib.hooks.Wrap("SetTraitsOnLoot", function(base, lootData, args)
+    host.hooks.wrap("SetTraitsOnLoot", function(base, lootData, args)
     base(lootData, args)
 
     -- Consume pending state unconditionally to prevent stale values on next call.
@@ -259,7 +259,7 @@ lib.hooks.Wrap("SetTraitsOnLoot", function(base, lootData, args)
     end
 end)
 
-lib.hooks.Wrap("IsTraitEligible", function(base, traitData, args)
+    host.hooks.wrap("IsTraitEligible", function(base, traitData, args)
     if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
 
     if banResolver.shouldBlockTraitEligibility(traitData.Name, { isKeepsakeOffering = isKeepsakeOffering }) then
@@ -270,14 +270,14 @@ lib.hooks.Wrap("IsTraitEligible", function(base, traitData, args)
     return base(traitData, args)
 end)
 
-lib.hooks.Wrap("GiveRandomHadesBoonAndBoostBoons", function(base, args)
+    host.hooks.wrap("GiveRandomHadesBoonAndBoostBoons", function(base, args)
     isKeepsakeOffering = true
     local result = base(args)
     isKeepsakeOffering = false
     return result
 end)
 
-lib.hooks.Wrap("GetRarityChances", function(base, loot)
+    host.hooks.wrap("GetRarityChances", function(base, loot)
     local chances = base(loot)
     if host.isEnabled() and runState.shouldForceRarity(loot) then
         chances.Common, chances.Rare, chances.Epic = 0.0, 0.0, 1.0
@@ -285,7 +285,7 @@ lib.hooks.Wrap("GetRarityChances", function(base, loot)
     return chances
 end)
 
-lib.hooks.Wrap("HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
+    host.hooks.wrap("HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
     local targetBoon = store.read("BridalGlowTargetBoon")
     if not targetBoon or targetBoon == "" then
         base(args, origTraitData, contextArgs)

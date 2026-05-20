@@ -39,20 +39,20 @@ local function IsRootCustomized(root, session)
     return false
 end
 
-local function IsGodPoolFilteringActive()
-    return lib.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isActive", false) == true
+local function IsGodPoolFilteringActive(host)
+    return host.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isActive", false) == true
 end
 
-local function IsGodVisibleInGodPool(godKey)
+local function IsGodVisibleInGodPool(host, godKey)
     local resolvedGodKey = banConfig.ResolveGodKey(godKey)
-    return lib.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isAvailable", true, resolvedGodKey) ~= false
+    return host.integrations.invoke(GOD_AVAILABILITY_INTEGRATION, "isAvailable", true, resolvedGodKey) ~= false
 end
 
-local function GetVisibleOlympianRoots(session)
-    local godPoolFiltering = IsGodPoolFilteringActive()
+local function GetVisibleOlympianRoots(host, session)
+    local godPoolFiltering = IsGodPoolFilteringActive(host)
     local roots = {}
     for _, root in ipairs(BuildOlympianRoots(session)) do
-        if not godPoolFiltering or IsGodVisibleInGodPool(root.id) then
+        if not godPoolFiltering or IsGodVisibleInGodPool(host, root.id) then
             roots[#roots + 1] = root
         end
     end
@@ -86,12 +86,12 @@ local function DrawForcePanel(ctx, root)
     end
 end
 
-local function GetBridalGlowEligibleRoots(session)
+local function GetBridalGlowEligibleRoots(host, session)
     if bridalGlowEligibleRoots then
         return bridalGlowEligibleRoots
     end
 
-    local visibleRoots = GetVisibleOlympianRoots(session)
+    local visibleRoots = GetVisibleOlympianRoots(host, session)
     local cached = {}
     for _, root in ipairs(visibleRoots) do
         cached[#cached + 1] = root
@@ -164,12 +164,12 @@ local function EnsureBridalGlowRootSelection(roots, selectedBoonKey, session)
     return fallback
 end
 
-local function GetCurrentBridalGlowTargetText(selectedBoonKey)
+local function GetCurrentBridalGlowTargetText(host, session, selectedBoonKey)
     if selectedBoonKey == nil or selectedBoonKey == "" then
         return "Current Target: Random"
     end
 
-    local eligibleRoots = GetBridalGlowEligibleRoots()
+    local eligibleRoots = GetBridalGlowEligibleRoots(host, session)
     for _, root in ipairs(eligibleRoots) do
         local boon = FindBoonByKey(root.primaryGodKey, selectedBoonKey)
         if boon and boon.IsBridalGlowEligible == true then
@@ -183,11 +183,12 @@ end
 local function DrawBridalGlowPanel(ctx)
     local ui = ctx.imgui
     local session = ctx.session
+    local host = ctx.host
     local selectedBoonKey = session.view.BridalGlowTargetBoon or ""
-    local eligibleRoots = GetBridalGlowEligibleRoots(session)
+    local eligibleRoots = GetBridalGlowEligibleRoots(host, session)
 
     ctx.widgets.text("Choose the Olympian god and boon pool Bridal Glow can target.")
-    ctx.widgets.text(GetCurrentBridalGlowTargetText(selectedBoonKey))
+    ctx.widgets.text(GetCurrentBridalGlowTargetText(host, session, selectedBoonKey))
     ctx.widgets.separator()
 
     if #eligibleRoots == 0 then
@@ -239,7 +240,8 @@ end
 local function DrawOlympiansTab(ctx)
     local ui = ctx.imgui
     local session = ctx.session
-    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(session)
+    local host = ctx.host
+    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(host, session)
     if #visibleRoots == 0 then
         ctx.widgets.text("No Olympians are currently available.", {
             color = uiData.MUTED_TEXT_COLOR,

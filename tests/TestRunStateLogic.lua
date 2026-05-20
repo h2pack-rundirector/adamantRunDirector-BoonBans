@@ -1,4 +1,4 @@
--- luacheck: globals TestRunStateLogic CurrentRun IsGodTrait lib
+-- luacheck: globals TestRunStateLogic CurrentRun IsGodTrait
 
 local lu = require("luaunit")
 
@@ -13,31 +13,35 @@ local function MakeStore(values)
     }
 end
 
+local function MakeHost()
+    return {
+        gameCache = {
+            currentRun = {
+                get = function(key, factory)
+                    if not CurrentRun then
+                        return nil
+                    end
+                    CurrentRun.__testGameCache = CurrentRun.__testGameCache or {}
+                    if CurrentRun.__testGameCache[key] == nil then
+                        CurrentRun.__testGameCache[key] = factory()
+                    end
+                    return CurrentRun.__testGameCache[key]
+                end,
+            },
+        },
+    }
+end
+
 function TestRunStateLogic:setUp()
     CurrentRun = {}
     IsGodTrait = function()
         return true
     end
-    lib = {
-        gameCache = {
-            get = function(object, packId, moduleId, key, factory)
-                object.__testGameCache = object.__testGameCache or {}
-                local pack = object.__testGameCache[packId] or {}
-                object.__testGameCache[packId] = pack
-                local module = pack[moduleId] or {}
-                pack[moduleId] = module
-                if module[key] == nil then
-                    module[key] = factory()
-                end
-                return module[key]
-            end,
-        },
-    }
     self.module = dofile("src/mods/logic/run_state.lua")
 end
 
 function TestRunStateLogic:testScratchSupportsValuesMapsAndTake()
-    local runState = self.module.create(MakeStore())
+    local runState = self.module.create(MakeHost(), MakeStore())
 
     runState.scratch.set("activeGod", "Apollo")
     lu.assertEquals(runState.scratch.get("activeGod"), "Apollo")
@@ -52,7 +56,7 @@ function TestRunStateLogic:testScratchSupportsValuesMapsAndTake()
 end
 
 function TestRunStateLogic:testRunCacheTracksAcquisitionsPerCurrentRun()
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 2 }))
+    local runState = self.module.create(MakeHost(), MakeStore({ ImproveFirstNBoonRarity = 2 }))
 
     lu.assertTrue(runState.hasCurrentRun())
     lu.assertEquals(runState.getBanPoolIndex("Apollo"), 1)
@@ -67,7 +71,7 @@ function TestRunStateLogic:testRunCacheTracksAcquisitionsPerCurrentRun()
 end
 
 function TestRunStateLogic:testForcedRarityConsumesOnlyWhenConfiguredAndGodTrait()
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 1 }))
+    local runState = self.module.create(MakeHost(), MakeStore({ ImproveFirstNBoonRarity = 1 }))
 
     lu.assertEquals(runState.getForcedRarityRemaining(), 1)
     lu.assertTrue(runState.shouldForceRarity({ GodLoot = true }))
@@ -78,7 +82,7 @@ end
 
 function TestRunStateLogic:testMissingCurrentRunReturnsSafeDefaults()
     CurrentRun = nil
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 3 }))
+    local runState = self.module.create(MakeHost(), MakeStore({ ImproveFirstNBoonRarity = 3 }))
 
     lu.assertFalse(runState.hasCurrentRun())
     lu.assertEquals(runState.getBanPoolIndex("Apollo"), 1)
@@ -91,7 +95,7 @@ function TestRunStateLogic:testForcedRarityDoesNotConsumeForNonGodTrait()
     IsGodTrait = function()
         return false
     end
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 1 }))
+    local runState = self.module.create(MakeHost(), MakeStore({ ImproveFirstNBoonRarity = 1 }))
 
     lu.assertFalse(runState.consumeForcedRarity("NonGodTrait"))
     lu.assertEquals(runState.getForcedRarityRemaining(), 1)

@@ -50,15 +50,7 @@ function TestAcquisitionLogic:setUp()
     _PLUGIN = { guid = "test-boon-bans-acquisition" }
 
     self.wraps = {}
-    lib = {
-        hooks = {
-            Wrap = function(funcName, ...)
-                local args = { ... }
-                self.wraps[funcName] = args[#args]
-            end,
-        },
-    }
-
+    lib = {}
     TraitData = {
         ReboundingSparkBoon = { IsDuoBoon = true },
         ZeusStrikeBoon = {},
@@ -74,6 +66,12 @@ function TestAcquisitionLogic:setUp()
 
     self.runState = MakeRunState()
     self.host = {
+        hooks = {
+            wrap = function(funcName, ...)
+                local args = { ... }
+                self.wraps[funcName] = args[#args]
+            end,
+        },
         isEnabled = function()
             return true
         end,

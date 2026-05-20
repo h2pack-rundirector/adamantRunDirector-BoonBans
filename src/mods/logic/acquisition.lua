@@ -95,7 +95,7 @@ function module.bind(data)
 end
 
 function module.registerHooks(host, runState, banResolver)
-    lib.hooks.Wrap("CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
+    host.hooks.wrap("CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
         local button = base(screen, lootData, itemIndex, itemData, args)
 
         if host.isEnabled()
@@ -108,7 +108,7 @@ function module.registerHooks(host, runState, banResolver)
         return button
     end)
 
-    lib.hooks.Wrap("OpenUpgradeChoiceMenu", function(base, source, args)
+    host.hooks.wrap("OpenUpgradeChoiceMenu", function(base, source, args)
         runState.scratch.clear(OFFER_SOURCES)
         if host.isEnabled() and source and source.Name then
             runState.scratch.set(ACTIVE_GOD, banResolver.getGodFromLootsource(source.Name))
@@ -116,7 +116,7 @@ function module.registerHooks(host, runState, banResolver)
         base(source, args)
     end)
 
-    lib.hooks.Wrap("AddTraitToHero", function(base, args)
+    host.hooks.wrap("AddTraitToHero", function(base, args)
         local result = base(args)
         local traitData = args and args.TraitData or result
 

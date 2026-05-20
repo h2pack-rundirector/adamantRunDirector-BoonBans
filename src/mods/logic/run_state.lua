@@ -1,8 +1,6 @@
-local PACK_ID = "run-director"
-local MODULE_ID = "BoonBans"
 local EMPTY_COUNTS = {}
 
-local function create(store)
+local function create(host, store)
     local scratch = {
         values = {},
         maps = {},
@@ -12,13 +10,13 @@ local function create(store)
     runState.scratch = {}
 
     local function GetCache()
-        if not CurrentRun then return nil end
-        local cache = lib.gameCache.get(CurrentRun, PACK_ID, MODULE_ID, "run", function()
+        local cache = host.gameCache.currentRun.get("run", function()
             return {
                 BanPoolPickCounts = {},
                 ImproveFirstNBoonRarity = store.read("ImproveFirstNBoonRarity") or 0,
             }
         end)
+        if not cache then return nil end
         if not cache.BanPoolPickCounts then
             cache.BanPoolPickCounts = {}
         end
