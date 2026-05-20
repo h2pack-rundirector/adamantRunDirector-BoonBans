@@ -49,20 +49,20 @@ local function GetActiveRoot(session)
     return BuildOtherGodRoots(session)[1]
 end
 
-local function DrawForcePanel(ctx, root)
-    ctx.widgets.text("Setup")
-    ctx.widgets.separator()
-    components.DrawConfiguredBanPoolControl(ctx, root)
+local function DrawForcePanel(draw, root)
+    draw.widgets.text("Setup")
+    draw.widgets.separator()
+    components.DrawConfiguredBanPoolControl(draw, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(ctx, root, banPool, {
+        components.DrawForceBanRow(draw, root, banPool, {
             label = banPool.label == "Bans" and "Force 1" or banPool.label,
         })
     end
 end
 
-local function DrawOtherGodsTab(ctx)
-    local ui = ctx.imgui
-    local session = ctx.session
+local function DrawOtherGodsTab(draw)
+    local imgui = draw.imgui
+    local session = draw.session
     local tabs = {}
     for _, root in ipairs(BuildOtherGodRoots(session)) do
         tabs[#tabs + 1] = {
@@ -72,7 +72,7 @@ local function DrawOtherGodsTab(ctx)
         }
     end
 
-    local activeRootId = lib.nav.verticalTabs(ui, {
+    local activeRootId = draw.nav.verticalTabs({
         id = "BoonBansOtherGodsTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
@@ -84,25 +84,25 @@ local function DrawOtherGodsTab(ctx)
 
     local root = GetActiveRoot(session)
 
-    ui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
-    if ui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
-        if #root.banPools > 1 and ui.BeginTabItem("Setup") then
-            DrawForcePanel(ctx, root)
-            ui.EndTabItem()
+    imgui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
+    if imgui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
+        if #root.banPools > 1 and imgui.BeginTabItem("Setup") then
+            DrawForcePanel(draw, root)
+            imgui.EndTabItem()
         end
         for _, banPool in ipairs(root.banPools) do
-            if ui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(ctx, banPool.key, "other_gods")
-                ui.EndTabItem()
+            if imgui.BeginTabItem(banPool.label) then
+                components.DrawBanPanel(draw, banPool.key, "other_gods")
+                imgui.EndTabItem()
             end
         end
-        if root.hasRarity and ui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(ctx, root)
-            ui.EndTabItem()
+        if root.hasRarity and imgui.BeginTabItem("Rarity") then
+            components.DrawRarityPanel(draw, root)
+            imgui.EndTabItem()
         end
-        ui.EndTabBar()
+        imgui.EndTabBar()
     end
-    ui.EndChild()
+    imgui.EndChild()
 end
 
 local module = {}

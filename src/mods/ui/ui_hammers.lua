@@ -57,21 +57,21 @@ local function GetActiveHammerRoot(session)
     return uiData.BuildBanPoolRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
 end
 
-local function DrawHammerForcePanel(ctx, root)
-    ctx.widgets.text("Setup")
-    ctx.widgets.separator()
-    components.DrawConfiguredBanPoolControl(ctx, root)
+local function DrawHammerForcePanel(draw, root)
+    draw.widgets.text("Setup")
+    draw.widgets.separator()
+    components.DrawConfiguredBanPoolControl(draw, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(ctx, root, banPool, {
+        components.DrawForceBanRow(draw, root, banPool, {
             controlWidth = 200,
             drawRarity = false,
         })
     end
 end
 
-local function DrawHammersTab(ctx)
-    local ui = ctx.imgui
-    local session = ctx.session
+local function DrawHammersTab(draw)
+    local imgui = draw.imgui
+    local session = draw.session
     local tabs = {}
     for _, root in ipairs(BuildHammerRoots(session)) do
         tabs[#tabs + 1] = {
@@ -81,7 +81,7 @@ local function DrawHammersTab(ctx)
         }
     end
 
-    local activeRootId = lib.nav.verticalTabs(ui, {
+    local activeRootId = draw.nav.verticalTabs({
         id = "BoonBansHammersTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
@@ -93,23 +93,23 @@ local function DrawHammersTab(ctx)
 
     local root = GetActiveHammerRoot(session)
 
-    ui.BeginChild("BoonBansHammersDetail", 0, 0, false)
-    if ui.BeginTabBar("BoonBansHammersViews##" .. root.id) then
-        if ui.BeginTabItem("Setup") then
-            DrawHammerForcePanel(ctx, root)
-            ui.EndTabItem()
+    imgui.BeginChild("BoonBansHammersDetail", 0, 0, false)
+    if imgui.BeginTabBar("BoonBansHammersViews##" .. root.id) then
+        if imgui.BeginTabItem("Setup") then
+            DrawHammerForcePanel(draw, root)
+            imgui.EndTabItem()
         end
         for _, banPool in ipairs(root.banPools) do
-            if ui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(ctx, banPool.key, "hammer")
-                ui.EndTabItem()
+            if imgui.BeginTabItem(banPool.label) then
+                components.DrawBanPanel(draw, banPool.key, "hammer")
+                imgui.EndTabItem()
             end
         end
-        ui.EndTabBar()
+        imgui.EndTabBar()
     else
-        DrawHammerForcePanel(ctx, root)
+        DrawHammerForcePanel(draw, root)
     end
-    ui.EndChild()
+    imgui.EndChild()
 end
 
 local module = {}

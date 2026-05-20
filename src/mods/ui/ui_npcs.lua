@@ -65,8 +65,8 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawRegionFilter(ctx)
-    local ui = ctx.imgui
+local function DrawRegionFilter(draw)
+    local imgui = draw.imgui
     local displayValues = {}
     local values = {}
     for _, option in ipairs(uiData.NPC_REGION_OPTIONS) do
@@ -74,10 +74,10 @@ local function DrawRegionFilter(ctx)
         displayValues[option.value] = option.label
     end
 
-    ui.AlignTextToFramePadding()
-    ui.Text("Filter NPC Sources:")
-    ui.SameLine()
-    ctx.widgets.radio(uiData.NPC_VIEW_REGION_ALIAS, {
+    imgui.AlignTextToFramePadding()
+    imgui.Text("Filter NPC Sources:")
+    imgui.SameLine()
+    draw.widgets.radio(uiData.NPC_VIEW_REGION_ALIAS, {
         label = "",
         values = values,
         displayValues = displayValues,
@@ -85,16 +85,16 @@ local function DrawRegionFilter(ctx)
     })
 end
 
-local function DrawNpcsTab(ctx)
-    local ui = ctx.imgui
-    local session = ctx.session
+local function DrawNpcsTab(draw)
+    local imgui = draw.imgui
+    local session = draw.session
 
-    DrawRegionFilter(ctx)
-    ui.Spacing()
+    DrawRegionFilter(draw)
+    imgui.Spacing()
 
     local visibleRoots = GetVisibleNpcRoots(session)
     if #visibleRoots == 0 then
-        ctx.widgets.text("No NPC sources match the current filter.", {
+        draw.widgets.text("No NPC sources match the current filter.", {
             color = uiData.MUTED_TEXT_COLOR,
         })
         return
@@ -110,7 +110,7 @@ local function DrawNpcsTab(ctx)
         }
     end
 
-    local activeRootId = lib.nav.verticalTabs(ui, {
+    local activeRootId = draw.nav.verticalTabs({
         id = "BoonBansNpcsTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
@@ -122,19 +122,19 @@ local function DrawNpcsTab(ctx)
 
     local root = GetActiveRoot(visibleRoots, session)
 
-    ui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
-    if ui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
-        if ui.BeginTabItem("Bans") then
-            components.DrawBanPanel(ctx, root.primaryGodKey, "npcs")
-            ui.EndTabItem()
+    imgui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
+    if imgui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
+        if imgui.BeginTabItem("Bans") then
+            components.DrawBanPanel(draw, root.primaryGodKey, "npcs")
+            imgui.EndTabItem()
         end
-        if root.hasRarity and ui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(ctx, root)
-            ui.EndTabItem()
+        if root.hasRarity and imgui.BeginTabItem("Rarity") then
+            components.DrawRarityPanel(draw, root)
+            imgui.EndTabItem()
         end
-        ui.EndTabBar()
+        imgui.EndTabBar()
     end
-    ui.EndChild()
+    imgui.EndChild()
 end
 
 local module = {}

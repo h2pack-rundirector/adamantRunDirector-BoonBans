@@ -5,25 +5,25 @@ local hammersUi = nil
 local npcsUi = nil
 local otherGodsUi = nil
 
-local function DrawSettingsTab(ctx)
-    local ui = ctx.imgui
-    local session = ctx.session
-    local host = ctx.host
+local function DrawSettingsTab(draw)
+    local imgui = draw.imgui
+    local session = draw.session
+    local host = draw.host
 
-    ctx.widgets.dropdown("ImproveFirstNBoonRarity", {
+    draw.widgets.dropdown("ImproveFirstNBoonRarity", {
         label = "Force First N Boons to Be Epic",
         values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
         controlWidth = 60,
     })
 
-    ui.Spacing()
-    ctx.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
+    imgui.Spacing()
+    draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
             uiActions.ResetAllBans(session, host)
         end,
     })
-    ctx.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
+    draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
             uiActions.ResetAllRarity(session)
@@ -31,47 +31,47 @@ local function DrawSettingsTab(ctx)
     })
 end
 
-function module.drawTab(ctx)
-    local ui = ctx.imgui
+function module.drawTab(draw)
+    local imgui = draw.imgui
 
-    if not ui.BeginTabBar("BoonBansLeanTabs") then
+    if not imgui.BeginTabBar("BoonBansLeanTabs") then
         return false
     end
 
-    if ui.BeginTabItem("Olympians") then
-        olympiansUi.draw(ctx)
-        ui.EndTabItem()
+    if imgui.BeginTabItem("Olympians") then
+        olympiansUi.draw(draw)
+        imgui.EndTabItem()
     end
 
-    if ui.BeginTabItem("Other Gods") then
-        otherGodsUi.draw(ctx)
-        ui.EndTabItem()
+    if imgui.BeginTabItem("Other Gods") then
+        otherGodsUi.draw(draw)
+        imgui.EndTabItem()
     end
 
-    if ui.BeginTabItem("Hammers") then
-        hammersUi.draw(ctx)
-        ui.EndTabItem()
+    if imgui.BeginTabItem("Hammers") then
+        hammersUi.draw(draw)
+        imgui.EndTabItem()
     end
 
-    if ui.BeginTabItem("NPCs") then
-        npcsUi.draw(ctx)
-        ui.EndTabItem()
+    if imgui.BeginTabItem("NPCs") then
+        npcsUi.draw(draw)
+        imgui.EndTabItem()
     end
 
-    if ui.BeginTabItem("Settings") then
-        DrawSettingsTab(ctx)
-        ui.EndTabItem()
+    if imgui.BeginTabItem("Settings") then
+        DrawSettingsTab(draw)
+        imgui.EndTabItem()
     end
 
-    ui.EndTabBar()
+    imgui.EndTabBar()
     return false
 end
 
-function module.drawQuickContent(ctx)
-    ctx.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
+function module.drawQuickContent(draw)
+    draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            uiActions.ResetAllControls(ctx.session, ctx.host)
+            uiActions.ResetAllControls(draw.session, draw.host)
         end,
     })
 end
