@@ -8,7 +8,7 @@ local otherGodsUi = nil
 local function DrawSettingsTab(draw)
     local imgui = draw.imgui
     local session = draw.session
-    local host = draw.host
+    local services = draw.services
 
     draw.widgets.dropdown("ImproveFirstNBoonRarity", {
         label = "Force First N Boons to Be Epic",
@@ -20,7 +20,7 @@ local function DrawSettingsTab(draw)
     draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
-            uiActions.ResetAllBans(session, host)
+            uiActions.ResetAllBans(session, services)
         end,
     })
     draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
@@ -71,7 +71,7 @@ function module.drawQuickContent(draw)
     draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            uiActions.ResetAllControls(draw.session, draw.host)
+            uiActions.ResetAllControls(draw.session, draw.services)
         end,
     })
 end

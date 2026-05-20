@@ -165,7 +165,7 @@ end
 function components.DrawBanPanel(draw, banPoolKey, idPrefix)
     local imgui = draw.imgui
     local session = draw.session
-    local host = draw.host
+    local services = draw.services
 
     components.DrawBanSearchControls(draw, banPoolKey)
     imgui.SameLine()
@@ -174,14 +174,14 @@ function components.DrawBanPanel(draw, banPoolKey, idPrefix)
     draw.widgets.button("Ban All", {
         id = idPrefix .. "_ban_all_" .. banPoolKey,
         onClick = function()
-            uiActions.BanAllGodBans(banPoolKey, session, host)
+            uiActions.BanAllGodBans(banPoolKey, session, services)
         end,
     })
     imgui.SameLine()
     draw.widgets.button("Reset", {
         id = idPrefix .. "_reset_" .. banPoolKey,
         onClick = function()
-            uiActions.ResetGodBans(banPoolKey, session, host)
+            uiActions.ResetGodBans(banPoolKey, session, services)
         end,
     })
 

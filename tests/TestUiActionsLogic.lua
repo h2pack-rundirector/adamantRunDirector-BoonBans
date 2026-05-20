@@ -106,7 +106,7 @@ function TestUiActionsLogic:setUp()
     }
     self.actions = dofile("src/mods/ui/ui_actions.lua").create(self.data)
     self.session, self.values, self.rows = MakeSession()
-    self.host = {
+    self.services = {
         logIf = function() end,
     }
 end
@@ -138,11 +138,11 @@ function TestUiActionsLogic:testResetAllRarityClearsUniqueRarityVars()
 end
 
 function TestUiActionsLogic:testBanAllAndResetAllBansUseConfiguredMasks()
-    lu.assertTrue(self.actions.BanAllGodBans("Apollo", self.session, self.host))
+    lu.assertTrue(self.actions.BanAllGodBans("Apollo", self.session, self.services))
     lu.assertEquals(self.rows[1].Bans, 7)
 
     self.rows[2] = { Bans = 3 }
-    lu.assertTrue(self.actions.ResetAllBans(self.session, self.host))
+    lu.assertTrue(self.actions.ResetAllBans(self.session, self.services))
     lu.assertEquals(self.rows[1].Bans, 0)
     lu.assertEquals(self.rows[2].Bans, 0)
 end

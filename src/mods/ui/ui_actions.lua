@@ -6,8 +6,8 @@ local uiActions = {}
 
 local band = bit32.band
 
-local function Log(host, fmt, ...)
-    host.logIf(fmt, ...)
+local function Log(services, fmt, ...)
+    services.logIf(fmt, ...)
 end
 
 function uiActions.SetConfiguredBanPoolCount(godKey, count, session)
@@ -77,46 +77,46 @@ function uiActions.SetBridalGlowTargetBoonKey(boonKey, session)
     return true
 end
 
-function uiActions.ResetGodBans(banPoolKey, session, host)
+function uiActions.ResetGodBans(banPoolKey, session, services)
     if godDefs[banPoolKey] then
         local changed = uiActions.SetBanMask(banPoolKey, 0, session)
         if not changed then
             return false
         end
-        Log(host, "[Micro] Reset bans for %s", banPoolKey)
+        Log(services, "[Micro] Reset bans for %s", banPoolKey)
         return true
     end
     return false
 end
 
-function uiActions.BanAllGodBans(banPoolKey, session, host)
+function uiActions.BanAllGodBans(banPoolKey, session, services)
     if godDefs[banPoolKey] then
         local mask = banPools.getBanMask(banPoolKey)
         local changed = uiActions.SetBanMask(banPoolKey, mask, session)
         if not changed then
             return false
         end
-        Log(host, "[Micro] Banned ALL for %s", banPoolKey)
+        Log(services, "[Micro] Banned ALL for %s", banPoolKey)
         return true
     end
     return false
 end
 
-function uiActions.ResetAllBans(session, host)
+function uiActions.ResetAllBans(session, services)
     local changed = false
     for banPoolKey, _ in pairs(godDefs) do
-        if uiActions.ResetGodBans(banPoolKey, session, host) then
+        if uiActions.ResetGodBans(banPoolKey, session, services) then
             changed = true
         end
     end
     if changed then
-        Log(host, "[Micro] Global Ban Reset triggered.")
+        Log(services, "[Micro] Global Ban Reset triggered.")
     end
     return changed
 end
 
-function uiActions.ResetAllControls(session, host)
-    uiActions.ResetAllBans(session, host)
+function uiActions.ResetAllControls(session, services)
+    uiActions.ResetAllBans(session, services)
     uiActions.ResetAllRarity(session)
 end
 
