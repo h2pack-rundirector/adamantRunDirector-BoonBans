@@ -1,6 +1,12 @@
 local uiData, components = nil, nil
 local banConfig = nil
 local ACTIVE_NPC_ROOT_ALIAS = "ActiveNpcRoot"
+local mutedTextOpts = nil
+local npcRegionRadioOpts = nil
+local NPC_NAV_OPTS = {
+    id = "BoonBansNpcsTabs",
+}
+local npcTabs = {}
 
 local NPC_ROOTS = {
     { id = "Arachne", label = "Arachne", group = "Underworld", hasRarity = false },
@@ -55,34 +61,61 @@ local function GetNavLabel(root, data)
     return label
 end
 
-local function GetActiveRoot(visibleRoots, data)
-    local activeRootId = data.get(ACTIVE_NPC_ROOT_ALIAS):read()
+local function FindRootById(visibleRoots, rootId)
     for _, root in ipairs(visibleRoots) do
-        if root.id == activeRootId then
+        if root.id == rootId then
             return root
         end
+    end
+end
+
+local function NormalizeActiveRoot(visibleRoots, activeRootField)
+    local activeRootId = activeRootField:read()
+    local root = FindRootById(visibleRoots, activeRootId)
+    if root then
+        return root, activeRootId
+    end
+
+    root = visibleRoots[1]
+    activeRootId = root.id
+    activeRootField:write(activeRootId)
+    return root, activeRootId
+end
+
+local function GetActiveRoot(visibleRoots, activeRootId)
+    local root = FindRootById(visibleRoots, activeRootId)
+    if root then
+        return root
     end
     return visibleRoots[1]
 end
 
 local function DrawRegionFilter(draw, data)
     local imgui = draw.imgui
-    local displayValues = {}
-    local values = {}
-    for _, option in ipairs(uiData.NPC_REGION_OPTIONS) do
-        values[#values + 1] = option.value
-        displayValues[option.value] = option.label
-    end
 
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter NPC Sources:")
     imgui.SameLine()
-    draw.widgets.radio(data.get(uiData.NPC_VIEW_REGION_ALIAS), {
-        label = "",
-        values = values,
-        displayValues = displayValues,
-        optionGap = 20,
-    })
+    draw.widgets.radio(data.get(uiData.NPC_VIEW_REGION_ALIAS), npcRegionRadioOpts)
+end
+
+local function SetNpcTab(index, root, data)
+    local tab = npcTabs[index]
+    if not tab then
+        tab = {}
+        npcTabs[index] = tab
+    end
+
+    tab.key = root.id
+    tab.label = GetNavLabel(root, data)
+    tab.color = uiData.GetGodColor(root.primaryGodKey)
+    tab.group = root.group
+end
+
+local function TrimNpcTabs(tabCount)
+    for index = tabCount + 1, #npcTabs do
+        npcTabs[index] = nil
+    end
 end
 
 local function DrawNpcsTab(draw, data, services)
@@ -94,33 +127,27 @@ local function DrawNpcsTab(draw, data, services)
 
     local visibleRoots = GetVisibleNpcRoots(data)
     if #visibleRoots == 0 then
-        draw.widgets.text("No NPC sources match the current filter.", {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
+        draw.widgets.text("No NPC sources match the current filter.", mutedTextOpts)
         return
     end
 
-    local tabs = {}
+    local tabCount = 0
     for _, root in ipairs(visibleRoots) do
-        tabs[#tabs + 1] = {
-            key = root.id,
-            label = GetNavLabel(root, data),
-            color = uiData.GetGodColor(root.primaryGodKey),
-            group = root.group,
-        }
+        tabCount = tabCount + 1
+        SetNpcTab(tabCount, root, data)
     end
+    TrimNpcTabs(tabCount)
 
-    local activeRootId = draw.nav.verticalTabs({
-        id = "BoonBansNpcsTabs",
-        navWidth = uiData.ROOT_NAV_WIDTH,
-        tabs = tabs,
-        activeKey = activeRootField:read(),
-    })
-    if activeRootId ~= activeRootField:read() then
-        activeRootField:write(activeRootId)
+    local root, activeRootId = NormalizeActiveRoot(visibleRoots, activeRootField)
+
+    NPC_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
+    NPC_NAV_OPTS.tabs = npcTabs
+    NPC_NAV_OPTS.activeKey = activeRootId
+    local selectedRootId = draw.nav.verticalTabs(NPC_NAV_OPTS)
+    if selectedRootId ~= activeRootId then
+        activeRootField:write(selectedRootId)
+        root = GetActiveRoot(visibleRoots, selectedRootId)
     end
-
-    local root = GetActiveRoot(visibleRoots, data)
 
     imgui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
@@ -143,6 +170,22 @@ function module.bind(deps)
     banConfig = deps.data.banConfig
     uiData = deps.model
     components = deps.components
+    npcTabs = {}
+    mutedTextOpts = {
+        color = uiData.MUTED_TEXT_COLOR,
+    }
+    local displayValues = {}
+    local values = {}
+    for _, option in ipairs(uiData.NPC_REGION_OPTIONS) do
+        values[#values + 1] = option.value
+        displayValues[option.value] = option.label
+    end
+    npcRegionRadioOpts = {
+        label = "",
+        values = values,
+        displayValues = displayValues,
+        optionGap = 20,
+    }
     return module
 end
 

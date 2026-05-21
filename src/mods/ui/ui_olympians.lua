@@ -4,8 +4,12 @@ local ACTIVE_OLYMPIAN_ROOT_ALIAS = "ActiveOlympianRoot"
 local BRIDAL_GLOW_ROOT_ALIAS = "BridalGlowRoot"
 local GOD_AVAILABILITY_INTEGRATION = "run-director.god-availability"
 local EMPTY_LIST = {}
-local bridalGlowEligibleRoots = nil
 local bridalGlowBoonsByRoot = {}
+local mutedTextOpts = nil
+local OLYMPIAN_NAV_OPTS = {
+    id = "BoonBansOlympiansTabs",
+}
+local olympianTabs = {}
 
 local OLYMPIAN_ROOT_KEYS = {
     "Aphrodite",
@@ -67,12 +71,31 @@ local function GetNavLabel(root, data)
     return label
 end
 
-local function GetActiveRoot(visibleRoots, data)
-    local activeRootId = data.get(ACTIVE_OLYMPIAN_ROOT_ALIAS):read()
+local function FindRootById(visibleRoots, rootId)
     for _, root in ipairs(visibleRoots) do
-        if root.id == activeRootId then
+        if root.id == rootId then
             return root
         end
+    end
+end
+
+local function NormalizeActiveRoot(visibleRoots, activeRootField)
+    local activeRootId = activeRootField:read()
+    local root = FindRootById(visibleRoots, activeRootId)
+    if root then
+        return root, activeRootId
+    end
+
+    root = visibleRoots[1]
+    activeRootId = root.id
+    activeRootField:write(activeRootId)
+    return root, activeRootId
+end
+
+local function GetActiveRoot(visibleRoots, activeRootId)
+    local root = FindRootById(visibleRoots, activeRootId)
+    if root then
+        return root
     end
     return visibleRoots[1]
 end
@@ -87,17 +110,7 @@ local function DrawForcePanel(draw, data, root)
 end
 
 local function GetBridalGlowEligibleRoots(services, data)
-    if bridalGlowEligibleRoots then
-        return bridalGlowEligibleRoots
-    end
-
-    local visibleRoots = GetVisibleOlympianRoots(services, data)
-    local cached = {}
-    for _, root in ipairs(visibleRoots) do
-        cached[#cached + 1] = root
-    end
-    bridalGlowEligibleRoots = cached
-    return cached
+    return GetVisibleOlympianRoots(services, data)
 end
 
 local function GetBridalGlowEligibleBoons(root)
@@ -165,12 +178,11 @@ local function EnsureBridalGlowRootSelection(roots, selectedBoonKey, data)
     return fallback
 end
 
-local function GetCurrentBridalGlowTargetText(services, data, selectedBoonKey)
+local function GetCurrentBridalGlowTargetText(eligibleRoots, selectedBoonKey)
     if selectedBoonKey == nil or selectedBoonKey == "" then
         return "Current Target: Random"
     end
 
-    local eligibleRoots = GetBridalGlowEligibleRoots(services, data)
     for _, root in ipairs(eligibleRoots) do
         local boon = FindBoonByKey(root.primaryGodKey, selectedBoonKey)
         if boon and boon.IsBridalGlowEligible == true then
@@ -189,13 +201,11 @@ local function DrawBridalGlowPanel(draw, data, services)
     local eligibleRoots = GetBridalGlowEligibleRoots(services, data)
 
     draw.widgets.text("Choose the Olympian god and boon pool Bridal Glow can target.")
-    draw.widgets.text(GetCurrentBridalGlowTargetText(services, data, selectedBoonKey))
+    draw.widgets.text(GetCurrentBridalGlowTargetText(eligibleRoots, selectedBoonKey))
     draw.widgets.separator()
 
     if #eligibleRoots == 0 then
-        draw.widgets.text("No eligible Olympian gods are currently available.", {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
+        draw.widgets.text("No eligible Olympian gods are currently available.", mutedTextOpts)
         return
     end
 
@@ -204,9 +214,7 @@ local function DrawBridalGlowPanel(draw, data, services)
     local eligibleBoons = GetBridalGlowEligibleBoons(selectedRoot)
 
     imgui.BeginChild("BoonBansBridalGlowGods", 220, 220, true)
-    draw.widgets.text("Eligible Gods", {
-        color = uiData.MUTED_TEXT_COLOR,
-    })
+    draw.widgets.text("Eligible Gods", mutedTextOpts)
     draw.widgets.separator()
     for _, root in ipairs(eligibleRoots) do
         if imgui.Selectable(root.label, root.id == selectedRootId) then
@@ -221,9 +229,7 @@ local function DrawBridalGlowPanel(draw, data, services)
     imgui.SameLine()
 
     imgui.BeginChild("BoonBansBridalGlowBoons", 0, 220, true)
-    draw.widgets.text("Eligible Boons", {
-        color = uiData.MUTED_TEXT_COLOR,
-    })
+    draw.widgets.text("Eligible Boons", mutedTextOpts)
     draw.widgets.separator()
     if imgui.Selectable("Random", selectedBoonKey == "") then
         uiActions.SetBridalGlowTargetBoonKey(nil, data)
@@ -238,43 +244,54 @@ local function DrawBridalGlowPanel(draw, data, services)
     imgui.EndChild()
 end
 
+local function SetOlympianTab(index, root, data)
+    local tab = olympianTabs[index]
+    if not tab then
+        tab = {}
+        olympianTabs[index] = tab
+    end
+
+    tab.key = root.id
+    tab.label = GetNavLabel(root, data)
+    tab.color = uiData.GetGodColor(root.primaryGodKey)
+end
+
+local function TrimOlympianTabs(tabCount)
+    for index = tabCount + 1, #olympianTabs do
+        olympianTabs[index] = nil
+    end
+end
+
 local function DrawOlympiansTab(draw, data, services)
     local imgui = draw.imgui
     local activeRootField = data.get(ACTIVE_OLYMPIAN_ROOT_ALIAS)
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(services, data)
     if #visibleRoots == 0 then
-        draw.widgets.text("No Olympians are currently available.", {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
+        draw.widgets.text("No Olympians are currently available.", mutedTextOpts)
         return
     end
 
-    local tabs = {}
+    local tabCount = 0
     for _, root in ipairs(visibleRoots) do
-        tabs[#tabs + 1] = {
-            key = root.id,
-            label = GetNavLabel(root, data),
-            color = uiData.GetGodColor(root.primaryGodKey),
-        }
+        tabCount = tabCount + 1
+        SetOlympianTab(tabCount, root, data)
     end
+    TrimOlympianTabs(tabCount)
 
-    local activeRootId = draw.nav.verticalTabs({
-        id = "BoonBansOlympiansTabs",
-        navWidth = uiData.ROOT_NAV_WIDTH,
-        tabs = tabs,
-        activeKey = activeRootField:read(),
-    })
-    if activeRootId ~= activeRootField:read() then
-        activeRootField:write(activeRootId)
+    local root, activeRootId = NormalizeActiveRoot(visibleRoots, activeRootField)
+
+    OLYMPIAN_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
+    OLYMPIAN_NAV_OPTS.tabs = olympianTabs
+    OLYMPIAN_NAV_OPTS.activeKey = activeRootId
+    local selectedRootId = draw.nav.verticalTabs(OLYMPIAN_NAV_OPTS)
+    if selectedRootId ~= activeRootId then
+        activeRootField:write(selectedRootId)
+        root = GetActiveRoot(visibleRoots, selectedRootId)
     end
-
-    local root = GetActiveRoot(visibleRoots, data)
 
     imgui.BeginChild("BoonBansOlympiansDetail", 0, 0, false)
     if godPoolFiltering then
-        draw.widgets.text(string.format("Showing %d Olympians enabled in God Pool.", #visibleRoots), {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
+        draw.widgets.text(string.format("Showing %d Olympians enabled in God Pool.", #visibleRoots), mutedTextOpts)
         imgui.Spacing()
     end
 
@@ -309,6 +326,11 @@ function module.bind(deps)
     uiData = deps.model
     uiActions = deps.actions
     components = deps.components
+    mutedTextOpts = {
+        color = uiData.MUTED_TEXT_COLOR,
+    }
+    olympianTabs = {}
+    bridalGlowBoonsByRoot = {}
     return module
 end
 

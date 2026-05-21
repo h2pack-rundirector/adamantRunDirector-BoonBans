@@ -5,6 +5,7 @@ local banPools = nil
 
 local uiData = {}
 local EMPTY_LIST = {}
+local EMPTY_OPTS = {}
 
 uiData.DEFAULT_GOD_COLOR = { 1, 1, 1, 1 }
 uiData.MUTED_TEXT_COLOR = { 0.6, 0.6, 0.6, 1.0 }
@@ -197,7 +198,7 @@ function uiData.GetGodColor(banPoolKey)
 end
 
 function uiData.BuildBanPoolRoot(godKey, opts)
-    opts = opts or {}
+    opts = opts or EMPTY_OPTS
     local godDef = GetGodDef(godKey) or {}
     local maxBanPools = banPools.getMaxBanPools(godKey)
     return {

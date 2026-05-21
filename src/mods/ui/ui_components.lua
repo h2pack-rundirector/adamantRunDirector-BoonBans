@@ -3,12 +3,94 @@ local banConfig = nil
 local banPools = nil
 local components = {}
 
+local EMPTY_OPTS = {}
+
+local BAN_FILTER_INPUT_OPTS = {
+    label = "",
+    controlWidth = 180,
+}
+
+local SINGLE_DISABLED_CHOICE_OPTS = {
+    selectionMode = "singleDisabled",
+}
+
+local RARITY_VALUES = { 0, 1, 2, 3 }
+local rarityDropdownOpts = {
+    label = "",
+    values = RARITY_VALUES,
+    controlWidth = 120,
+}
+local rarityShortcutDropdownOpts = {
+    label = "Rarity",
+    values = RARITY_VALUES,
+    controlWidth = 120,
+}
+
+local mutedTextOpts = nil
+local filteredPackedBanOptsByPool = {}
+local forcePackedDropdownOptsByPool = {}
+
 function components.bind(data, model, actions)
     banConfig = data.banConfig
     banPools = data.banPools
     uiData = model
     uiActions = actions
+    mutedTextOpts = {
+        color = uiData.MUTED_TEXT_COLOR,
+    }
+    rarityDropdownOpts.displayValues = uiData.RARITY_LABELS
+    rarityDropdownOpts.valueColors = uiData.RARITY_COLORS
+    rarityShortcutDropdownOpts.displayValues = uiData.RARITY_LABELS
+    rarityShortcutDropdownOpts.valueColors = uiData.RARITY_COLORS
+    filteredPackedBanOptsByPool = {}
+    forcePackedDropdownOptsByPool = {}
     return components
+end
+
+local function GetFilteredPackedBanOpts(banPoolKey, filterText, opts)
+    if opts and (opts.valueColors or opts.slotCount) then
+        return {
+            valueColors = opts.valueColors or uiData.BuildPackedBanValueColors(banPoolKey),
+            slotCount = opts.slotCount or #uiData.GetBanPoolBoons(banPoolKey),
+            filterText = filterText,
+        }
+    end
+
+    local cached = filteredPackedBanOptsByPool[banPoolKey]
+    if not cached then
+        cached = {
+            valueColors = uiData.BuildPackedBanValueColors(banPoolKey),
+            slotCount = #uiData.GetBanPoolBoons(banPoolKey),
+        }
+        filteredPackedBanOptsByPool[banPoolKey] = cached
+    end
+    cached.filterText = filterText
+    return cached
+end
+
+local function GetForcePackedDropdownOpts(banPoolKey, controlWidth)
+    local widthKey = controlWidth or 220
+    local byWidth = forcePackedDropdownOptsByPool[banPoolKey]
+    if not byWidth then
+        byWidth = {}
+        forcePackedDropdownOptsByPool[banPoolKey] = byWidth
+    end
+
+    local cached = byWidth[widthKey]
+    if not cached then
+        cached = {
+            id = "force_" .. banPoolKey,
+            label = "",
+            selectionMode = "singleDisabled",
+            noneLabel = "None",
+            multipleLabel = "Multiple",
+            displayValues = uiData.BuildPackedBanDisplayValues(banPoolKey),
+            valueColors = uiData.BuildPackedBanValueColors(banPoolKey),
+            controlWidth = widthKey,
+        }
+        byWidth[widthKey] = cached
+    end
+    return cached
 end
 
 function components.DrawBanSearchControls(draw, data, idSuffix)
@@ -19,10 +101,7 @@ function components.DrawBanSearchControls(draw, data, idSuffix)
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter:")
     imgui.SameLine()
-    draw.widgets.inputText(filterField, {
-        label = "",
-        controlWidth = 180,
-    })
+    draw.widgets.inputText(filterField, BAN_FILTER_INPUT_OPTS)
     imgui.SameLine()
     draw.widgets.button("Clear", {
         id = "boon_bans_filter_clear_" .. idSuffix,
@@ -33,23 +112,17 @@ function components.DrawBanSearchControls(draw, data, idSuffix)
 end
 
 function components.DrawFilteredPackedBanList(draw, data, banPoolKey, opts)
-    opts = opts or {}
+    opts = opts or EMPTY_OPTS
     local filterText = tostring(data.get(uiData.BAN_FILTER_TEXT_ALIAS):read() or "")
     local fields = banConfig.ResolveBanFields(banPoolKey, data)
     if not fields then
         return
     end
 
-    draw.widgets.packedCheckboxList(fields.bans, {
-        valueColors = opts.valueColors or uiData.BuildPackedBanValueColors(banPoolKey),
-        slotCount = opts.slotCount or #uiData.GetBanPoolBoons(banPoolKey),
-        filterText = filterText,
-    })
+    draw.widgets.packedCheckboxList(fields.bans, GetFilteredPackedBanOpts(banPoolKey, filterText, opts))
 
     if uiData.GetVisibleBanCount(banPoolKey, data) == 0 then
-        draw.widgets.text("No boons match the current filter.", {
-            color = uiData.MUTED_TEXT_COLOR,
-        })
+        draw.widgets.text("No boons match the current filter.", mutedTextOpts)
     end
 end
 
@@ -59,9 +132,7 @@ local function GetSingleForcedBoon(draw, data, banPoolKey, fields)
         return nil
     end
 
-    local selectedAlias = draw.widgets.getPackedChoiceAlias(fields.bans, {
-        selectionMode = "singleDisabled",
-    })
+    local selectedAlias = draw.widgets.getPackedChoiceAlias(fields.bans, SINGLE_DISABLED_CHOICE_OPTS)
     if not selectedAlias then
         return nil
     end
@@ -122,17 +193,11 @@ function components.DrawForcedBoonRarityShortcut(draw, data, root, banPool, fiel
 
     imgui.SameLine()
     imgui.SetCursorPosX(330)
-    draw.widgets.dropdown(data.get(rarityAlias), {
-        label = "Rarity",
-        values = { 0, 1, 2, 3 },
-        displayValues = uiData.RARITY_LABELS,
-        valueColors = uiData.RARITY_COLORS,
-        controlWidth = 120,
-    })
+    draw.widgets.dropdown(data.get(rarityAlias), rarityShortcutDropdownOpts)
 end
 
 function components.DrawForceBanRow(draw, data, root, banPool, opts)
-    opts = opts or {}
+    opts = opts or EMPTY_OPTS
     local imgui = draw.imgui
     local fields = banConfig.ResolveBanFields(banPool.key, data)
     if not fields then
@@ -143,16 +208,7 @@ function components.DrawForceBanRow(draw, data, root, banPool, opts)
     imgui.Text(opts.label or banPool.label)
     imgui.SameLine()
     imgui.SetCursorPosX(opts.controlX or 80)
-    draw.widgets.packedDropdown(fields.bans, {
-        id = "force_" .. banPool.key,
-        label = "",
-        selectionMode = "singleDisabled",
-        noneLabel = "None",
-        multipleLabel = "Multiple",
-        displayValues = uiData.BuildPackedBanDisplayValues(banPool.key),
-        valueColors = uiData.BuildPackedBanValueColors(banPool.key),
-        controlWidth = opts.controlWidth or 220,
-    })
+    draw.widgets.packedDropdown(fields.bans, GetForcePackedDropdownOpts(banPool.key, opts.controlWidth))
 
     if opts.drawRarity ~= false then
         components.DrawForcedBoonRarityShortcut(draw, data, root, banPool, fields)
@@ -194,13 +250,7 @@ function components.DrawRarityPanel(draw, data, root)
                 imgui.Text(uiData.GetBoonText(boon))
                 imgui.SameLine()
                 imgui.SetCursorPosX(220)
-                draw.widgets.dropdown(data.get(rarityAlias), {
-                    label = "",
-                    values = { 0, 1, 2, 3 },
-                    displayValues = uiData.RARITY_LABELS,
-                    valueColors = uiData.RARITY_COLORS,
-                    controlWidth = 120,
-                })
+                draw.widgets.dropdown(data.get(rarityAlias), rarityDropdownOpts)
             end
         end
     end

@@ -5,14 +5,16 @@ local hammersUi = nil
 local npcsUi = nil
 local otherGodsUi = nil
 
+local FIRST_N_RARITY_DROPDOWN_OPTS = {
+    label = "Force First N Boons to Be Epic",
+    values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
+    controlWidth = 60,
+}
+
 local function DrawSettingsTab(draw, data, services)
     local imgui = draw.imgui
 
-    draw.widgets.dropdown(data.get("ImproveFirstNBoonRarity"), {
-        label = "Force First N Boons to Be Epic",
-        values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
-        controlWidth = 60,
-    })
+    draw.widgets.dropdown(data.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
     draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {

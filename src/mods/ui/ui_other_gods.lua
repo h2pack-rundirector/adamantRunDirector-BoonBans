@@ -1,6 +1,11 @@
 local uiData, components = nil, nil
 local banConfig = nil
 local ACTIVE_OTHER_GOD_ROOT_ALIAS = "ActiveOtherGodRoot"
+local forceRowOptsByLabel = {}
+local OTHER_GODS_NAV_OPTS = {
+    id = "BoonBansOtherGodsTabs",
+}
+local otherGodTabs = {}
 
 local OTHER_GOD_ROOT_SPECS = {
     { id = "Hermes" },
@@ -49,35 +54,59 @@ local function GetActiveRoot(data)
     return BuildOtherGodRoots(data)[1]
 end
 
+local function GetForceRowOpts(banPool)
+    local label = banPool.label == "Bans" and "Force 1" or banPool.label
+    local opts = forceRowOptsByLabel[label]
+    if not opts then
+        opts = {
+            label = label,
+        }
+        forceRowOptsByLabel[label] = opts
+    end
+    return opts
+end
+
 local function DrawForcePanel(draw, data, root)
     draw.widgets.text("Setup")
     draw.widgets.separator()
     components.DrawConfiguredBanPoolControl(draw, data, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(draw, data, root, banPool, {
-            label = banPool.label == "Bans" and "Force 1" or banPool.label,
-        })
+        components.DrawForceBanRow(draw, data, root, banPool, GetForceRowOpts(banPool))
+    end
+end
+
+local function SetOtherGodTab(index, root, data)
+    local tab = otherGodTabs[index]
+    if not tab then
+        tab = {}
+        otherGodTabs[index] = tab
+    end
+
+    tab.key = root.id
+    tab.label = GetNavLabel(root, data)
+    tab.color = uiData.GetGodColor(root.primaryGodKey)
+end
+
+local function TrimOtherGodTabs(tabCount)
+    for index = tabCount + 1, #otherGodTabs do
+        otherGodTabs[index] = nil
     end
 end
 
 local function DrawOtherGodsTab(draw, data, services)
     local imgui = draw.imgui
     local activeRootField = data.get(ACTIVE_OTHER_GOD_ROOT_ALIAS)
-    local tabs = {}
+    local tabCount = 0
     for _, root in ipairs(BuildOtherGodRoots(data)) do
-        tabs[#tabs + 1] = {
-            key = root.id,
-            label = GetNavLabel(root, data),
-            color = uiData.GetGodColor(root.primaryGodKey),
-        }
+        tabCount = tabCount + 1
+        SetOtherGodTab(tabCount, root, data)
     end
+    TrimOtherGodTabs(tabCount)
 
-    local activeRootId = draw.nav.verticalTabs({
-        id = "BoonBansOtherGodsTabs",
-        navWidth = uiData.ROOT_NAV_WIDTH,
-        tabs = tabs,
-        activeKey = activeRootField:read(),
-    })
+    OTHER_GODS_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
+    OTHER_GODS_NAV_OPTS.tabs = otherGodTabs
+    OTHER_GODS_NAV_OPTS.activeKey = activeRootField:read()
+    local activeRootId = draw.nav.verticalTabs(OTHER_GODS_NAV_OPTS)
     if activeRootId ~= activeRootField:read() then
         activeRootField:write(activeRootId)
     end
@@ -111,6 +140,8 @@ function module.bind(deps)
     banConfig = deps.data.banConfig
     uiData = deps.model
     components = deps.components
+    forceRowOptsByLabel = {}
+    otherGodTabs = {}
     return module
 end
 

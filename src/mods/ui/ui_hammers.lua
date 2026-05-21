@@ -2,6 +2,16 @@ local uiData, components = nil, nil
 local banConfig = nil
 local ACTIVE_HAMMER_ROOT_ALIAS = "ActiveHammerRoot"
 
+local HAMMER_FORCE_ROW_OPTS = {
+    controlWidth = 200,
+    drawRarity = false,
+}
+
+local HAMMER_NAV_OPTS = {
+    id = "BoonBansHammersTabs",
+}
+local hammerTabs = {}
+
 local HAMMER_ROOT_KEYS = {
     "Staff",
     "Dagger",
@@ -62,31 +72,42 @@ local function DrawHammerForcePanel(draw, data, root)
     draw.widgets.separator()
     components.DrawConfiguredBanPoolControl(draw, data, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(draw, data, root, banPool, {
-            controlWidth = 200,
-            drawRarity = false,
-        })
+        components.DrawForceBanRow(draw, data, root, banPool, HAMMER_FORCE_ROW_OPTS)
+    end
+end
+
+local function SetHammerTab(index, root, data)
+    local tab = hammerTabs[index]
+    if not tab then
+        tab = {}
+        hammerTabs[index] = tab
+    end
+
+    tab.key = root.id
+    tab.label = GetHammerNavLabel(root, data)
+    tab.color = uiData.GetGodColor(root.primaryGodKey)
+end
+
+local function TrimHammerTabs(tabCount)
+    for index = tabCount + 1, #hammerTabs do
+        hammerTabs[index] = nil
     end
 end
 
 local function DrawHammersTab(draw, data, services)
     local imgui = draw.imgui
     local activeRootField = data.get(ACTIVE_HAMMER_ROOT_ALIAS)
-    local tabs = {}
+    local tabCount = 0
     for _, root in ipairs(BuildHammerRoots(data)) do
-        tabs[#tabs + 1] = {
-            key = root.id,
-            label = GetHammerNavLabel(root, data),
-            color = uiData.GetGodColor(root.primaryGodKey),
-        }
+        tabCount = tabCount + 1
+        SetHammerTab(tabCount, root, data)
     end
+    TrimHammerTabs(tabCount)
 
-    local activeRootId = draw.nav.verticalTabs({
-        id = "BoonBansHammersTabs",
-        navWidth = uiData.ROOT_NAV_WIDTH,
-        tabs = tabs,
-        activeKey = activeRootField:read(),
-    })
+    HAMMER_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
+    HAMMER_NAV_OPTS.tabs = hammerTabs
+    HAMMER_NAV_OPTS.activeKey = activeRootField:read()
+    local activeRootId = draw.nav.verticalTabs(HAMMER_NAV_OPTS)
     if activeRootId ~= activeRootField:read() then
         activeRootField:write(activeRootId)
     end
@@ -118,6 +139,7 @@ function module.bind(deps)
     banConfig = deps.data.banConfig
     uiData = deps.model
     components = deps.components
+    hammerTabs = {}
     return module
 end
 
