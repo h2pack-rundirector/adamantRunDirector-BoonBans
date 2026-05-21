@@ -1,5 +1,5 @@
 -- Static giver and ban-pool definitions. This table owns structure only;
--- player choices live in store/session, and resolved game data lives in catalog.
+-- player choices live in store/data refs, and resolved game data lives in catalog.
 local godDefs = {}
 
 local GROUP_CORE       = "Core"

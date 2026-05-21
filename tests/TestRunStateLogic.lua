@@ -7,8 +7,12 @@ TestRunStateLogic = {}
 local function MakeStore(values)
     values = values or {}
     return {
-        read = function(key)
-            return values[key]
+        get = function(key)
+            return {
+                read = function()
+                    return values[key]
+                end,
+            }
         end,
     }
 end

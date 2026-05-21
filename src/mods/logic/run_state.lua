@@ -1,5 +1,9 @@
 local EMPTY_COUNTS = {}
 
+local function ReadStore(store, alias)
+    return store.get(alias):read()
+end
+
 local function create(host, store)
     local scratch = {
         values = {},
@@ -13,7 +17,7 @@ local function create(host, store)
         local cache = host.cache.currentRun.get("run", function()
             return {
                 BanPoolPickCounts = {},
-                ImproveFirstNBoonRarity = store.read("ImproveFirstNBoonRarity") or 0,
+                ImproveFirstNBoonRarity = ReadStore(store, "ImproveFirstNBoonRarity") or 0,
             }
         end)
         if not cache then return nil end
@@ -21,7 +25,7 @@ local function create(host, store)
             cache.BanPoolPickCounts = {}
         end
         if cache.ImproveFirstNBoonRarity == nil then
-            cache.ImproveFirstNBoonRarity = store.read("ImproveFirstNBoonRarity") or 0
+            cache.ImproveFirstNBoonRarity = ReadStore(store, "ImproveFirstNBoonRarity") or 0
         end
         return cache
     end

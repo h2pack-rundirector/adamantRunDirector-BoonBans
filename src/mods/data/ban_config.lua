@@ -2,7 +2,7 @@ local function CreateBanConfig(godDefs, banPools)
     local banConfig = {}
 
     -- Read-only projection over player choices. Runtime callers pass
-    -- store; UI callers pass session. Writes belong in ui_actions.
+    -- store; UI callers pass draw data. Writes belong in ui_actions.
 
     local band, rshift = bit32.band, bit32.rshift
 
@@ -32,7 +32,7 @@ local function CreateBanConfig(godDefs, banPools)
             return 1
         end
 
-        return handle.table(tableConfig.alias):count()
+        return handle.get(tableConfig.alias):count()
     end
 
     function banConfig.IsBanPoolConfigured(godKey, banPoolIndex, handle)
@@ -53,7 +53,7 @@ local function CreateBanConfig(godDefs, banPools)
             return nil
         end
 
-        local tableHandle = handle.table(banPools.getTableAlias(banPoolKey))
+        local tableHandle = handle.get(banPools.getTableAlias(banPoolKey))
         return {
             bans = tableHandle:get(banPools.getBanPoolIndex(banPoolKey), banPools.BAN_POOL_ALIAS),
         }
@@ -75,7 +75,7 @@ local function CreateBanConfig(godDefs, banPools)
         local meta = godDefs[godKey]
         if not meta or not meta.rarityVar then return 0 end
 
-        local packedVal = handle.read(meta.rarityVar) or 0
+        local packedVal = handle.get(meta.rarityVar):read() or 0
         local shift = bitIndex * 2
         return band(rshift(packedVal, shift), 3)
     end

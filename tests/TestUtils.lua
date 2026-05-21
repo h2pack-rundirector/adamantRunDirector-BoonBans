@@ -97,12 +97,15 @@ lib = {
 local storeValues = {}
 store = {}
 
-function store.read(key)
-    return storeValues[key]
-end
-
-function store.write(key, value)
-    storeValues[key] = value
+function store.get(key)
+    return {
+        read = function()
+            return storeValues[key]
+        end,
+        write = function(_, value)
+            storeValues[key] = value
+        end,
+    }
 end
 
 local function makeBoon(key, bit, rarity)

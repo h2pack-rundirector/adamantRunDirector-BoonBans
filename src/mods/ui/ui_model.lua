@@ -72,7 +72,7 @@ local function IsRarityGod(godKey)
     return type(def) == "table" and def.rarityVar ~= nil
 end
 
-local function BuildBanPools(godKey, session)
+local function BuildBanPools(godKey, data)
     local maxBanPools = banPools.getMaxBanPools(godKey)
     if maxBanPools <= 1 then
         return {
@@ -80,7 +80,7 @@ local function BuildBanPools(godKey, session)
         }
     end
 
-    local configuredBanPools = banConfig.GetConfiguredBanPoolCount(godKey, session)
+    local configuredBanPools = banConfig.GetConfiguredBanPoolCount(godKey, data)
     if configuredBanPools < 1 then configuredBanPools = 1 end
     if configuredBanPools > maxBanPools then configuredBanPools = maxBanPools end
     local rootBanPools = {}
@@ -166,12 +166,15 @@ function uiData.GetBoonText(boon)
     return boon.Name or boon.Key or ""
 end
 
-function uiData.GetVisibleBanCount(banPoolKey, session)
+function uiData.GetVisibleBanCount(banPoolKey, data)
     if type(banPoolKey) ~= "string" or banPoolKey == "" then
         return 0
     end
 
-    local filterText = tostring(session and session.view and session.view[uiData.BAN_FILTER_TEXT_ALIAS] or ""):lower()
+    local filterText = ""
+    if data then
+        filterText = tostring(data.get(uiData.BAN_FILTER_TEXT_ALIAS):read() or ""):lower()
+    end
     local visibleCount = 0
 
     for _, boon in ipairs(uiData.GetBanPoolBoons(banPoolKey)) do
@@ -205,7 +208,7 @@ function uiData.BuildBanPoolRoot(godKey, opts)
         maxBanPools = maxBanPools,
         hasRarity = opts.hasRarity ~= nil and opts.hasRarity or IsRarityGod(godKey),
         hasBridalGlow = opts.hasBridalGlow == true,
-        banPools = BuildBanPools(godKey, opts.session),
+        banPools = BuildBanPools(godKey, opts.data),
     }
 end
 

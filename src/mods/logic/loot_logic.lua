@@ -286,7 +286,7 @@ end)
 end)
 
     host.hooks.wrap("HeraSuperchargeBoon", function(base, args, origTraitData, contextArgs)
-    local targetBoon = store.read("BridalGlowTargetBoon")
+    local targetBoon = store.get("BridalGlowTargetBoon"):read()
     if not targetBoon or targetBoon == "" then
         base(args, origTraitData, contextArgs)
         return

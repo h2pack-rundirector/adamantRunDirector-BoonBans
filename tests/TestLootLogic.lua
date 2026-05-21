@@ -71,8 +71,12 @@ function TestLootLogic:setUp()
         logIf = function() end,
     }
     self.store = {
-        read = function()
-            return nil
+        get = function()
+            return {
+                read = function()
+                    return nil
+                end,
+            }
         end,
     }
     self.runState = {

@@ -27,17 +27,17 @@ local function IsRegionMatch(group, regionValue)
     return true
 end
 
-local function IsRootCustomized(root, session)
-    return banConfig.IsBanPoolCustomized(root.primaryGodKey, session)
+local function IsRootCustomized(root, data)
+    return banConfig.IsBanPoolCustomized(root.primaryGodKey, data)
 end
 
-local function GetVisibleNpcRoots(session)
-    local regionValue = session and session.view and session.view[uiData.NPC_VIEW_REGION_ALIAS] or 4
+local function GetVisibleNpcRoots(data)
+    local regionValue = data and data.get(uiData.NPC_VIEW_REGION_ALIAS):read() or 4
     local roots = {}
     for _, spec in ipairs(NPC_ROOTS) do
         if IsRegionMatch(spec.group, regionValue) then
             roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, {
-                session = session,
+                data = data,
                 label = spec.label,
                 group = spec.group,
                 hasRarity = spec.hasRarity,
@@ -47,16 +47,16 @@ local function GetVisibleNpcRoots(session)
     return roots
 end
 
-local function GetNavLabel(root, session)
+local function GetNavLabel(root, data)
     local label = root.label
-    if IsRootCustomized(root, session) then
+    if IsRootCustomized(root, data) then
         label = label .. " *"
     end
     return label
 end
 
-local function GetActiveRoot(visibleRoots, session)
-    local activeRootId = session.view[ACTIVE_NPC_ROOT_ALIAS]
+local function GetActiveRoot(visibleRoots, data)
+    local activeRootId = data.get(ACTIVE_NPC_ROOT_ALIAS):read()
     for _, root in ipairs(visibleRoots) do
         if root.id == activeRootId then
             return root
@@ -65,7 +65,7 @@ local function GetActiveRoot(visibleRoots, session)
     return visibleRoots[1]
 end
 
-local function DrawRegionFilter(draw)
+local function DrawRegionFilter(draw, data)
     local imgui = draw.imgui
     local displayValues = {}
     local values = {}
@@ -77,7 +77,7 @@ local function DrawRegionFilter(draw)
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter NPC Sources:")
     imgui.SameLine()
-    draw.widgets.radio(uiData.NPC_VIEW_REGION_ALIAS, {
+    draw.widgets.radio(data.get(uiData.NPC_VIEW_REGION_ALIAS), {
         label = "",
         values = values,
         displayValues = displayValues,
@@ -85,14 +85,14 @@ local function DrawRegionFilter(draw)
     })
 end
 
-local function DrawNpcsTab(draw)
+local function DrawNpcsTab(draw, data, services)
     local imgui = draw.imgui
-    local session = draw.session
+    local activeRootField = data.get(ACTIVE_NPC_ROOT_ALIAS)
 
-    DrawRegionFilter(draw)
+    DrawRegionFilter(draw, data)
     imgui.Spacing()
 
-    local visibleRoots = GetVisibleNpcRoots(session)
+    local visibleRoots = GetVisibleNpcRoots(data)
     if #visibleRoots == 0 then
         draw.widgets.text("No NPC sources match the current filter.", {
             color = uiData.MUTED_TEXT_COLOR,
@@ -104,7 +104,7 @@ local function DrawNpcsTab(draw)
     for _, root in ipairs(visibleRoots) do
         tabs[#tabs + 1] = {
             key = root.id,
-            label = GetNavLabel(root, session),
+            label = GetNavLabel(root, data),
             color = uiData.GetGodColor(root.primaryGodKey),
             group = root.group,
         }
@@ -114,22 +114,22 @@ local function DrawNpcsTab(draw)
         id = "BoonBansNpcsTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
-        activeKey = session.view[ACTIVE_NPC_ROOT_ALIAS],
+        activeKey = activeRootField:read(),
     })
-    if activeRootId ~= session.view[ACTIVE_NPC_ROOT_ALIAS] then
-        session.write(ACTIVE_NPC_ROOT_ALIAS, activeRootId)
+    if activeRootId ~= activeRootField:read() then
+        activeRootField:write(activeRootId)
     end
 
-    local root = GetActiveRoot(visibleRoots, session)
+    local root = GetActiveRoot(visibleRoots, data)
 
     imgui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if imgui.BeginTabItem("Bans") then
-            components.DrawBanPanel(draw, root.primaryGodKey, "npcs")
+            components.DrawBanPanel(draw, data, services, root.primaryGodKey, "npcs")
             imgui.EndTabItem()
         end
         if root.hasRarity and imgui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(draw, root)
+            components.DrawRarityPanel(draw, data, root)
             imgui.EndTabItem()
         end
         imgui.EndTabBar()

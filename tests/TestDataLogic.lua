@@ -99,29 +99,35 @@ function TestDataLogic.testBanConfigProjectsStoreAndSessionThroughTableRows()
         { Bans = 1 },
     }
     local handle = {
-        table = function(alias)
-            lu.assertEquals(alias, "ApolloBanPools")
+        get = function(alias)
+            if alias == "ApolloBanPools" then
+                return {
+                    count = function()
+                        return #rows
+                    end,
+                    get = function(_, index, childAlias)
+                        return {
+                            read = function()
+                                return rows[index][childAlias]
+                            end,
+                            alias = function()
+                                return childAlias
+                            end,
+                        }
+                    end,
+                }
+            end
             return {
                 count = function()
-                    return #rows
+                    return nil
                 end,
-                get = function(_, index, childAlias)
-                    return {
-                        read = function()
-                            return rows[index][childAlias]
-                        end,
-                        alias = function()
-                            return childAlias
-                        end,
-                    }
+                read = function()
+                    if alias == "PackedRarityApollo" then
+                        return 8
+                    end
+                    return nil
                 end,
             }
-        end,
-        read = function(alias)
-            if alias == "PackedRarityApollo" then
-                return 8
-            end
-            return nil
         end,
     }
 

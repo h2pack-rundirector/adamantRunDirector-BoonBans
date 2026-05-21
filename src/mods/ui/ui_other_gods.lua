@@ -14,60 +14,60 @@ local OTHER_GOD_ROOT_SPECS = {
     { id = "Judgement3" },
 }
 
-local function BuildOtherGodRoots(session)
+local function BuildOtherGodRoots(data)
     local roots = {}
     for _, spec in ipairs(OTHER_GOD_ROOT_SPECS) do
-        roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, { session = session })
+        roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, { data = data })
     end
     return roots
 end
 
-local function IsRootCustomized(root, session)
+local function IsRootCustomized(root, data)
     for _, banPool in ipairs(root.banPools) do
-        if banConfig.IsBanPoolCustomized(banPool.key, session) then
+        if banConfig.IsBanPoolCustomized(banPool.key, data) then
             return true
         end
     end
     return false
 end
 
-local function GetNavLabel(root, session)
+local function GetNavLabel(root, data)
     local label = root.label
-    if IsRootCustomized(root, session) then
+    if IsRootCustomized(root, data) then
         label = label .. " *"
     end
     return label
 end
 
-local function GetActiveRoot(session)
-    local activeRootId = session.view[ACTIVE_OTHER_GOD_ROOT_ALIAS]
-    for _, root in ipairs(BuildOtherGodRoots(session)) do
+local function GetActiveRoot(data)
+    local activeRootId = data.get(ACTIVE_OTHER_GOD_ROOT_ALIAS):read()
+    for _, root in ipairs(BuildOtherGodRoots(data)) do
         if root.id == activeRootId then
             return root
         end
     end
-    return BuildOtherGodRoots(session)[1]
+    return BuildOtherGodRoots(data)[1]
 end
 
-local function DrawForcePanel(draw, root)
+local function DrawForcePanel(draw, data, root)
     draw.widgets.text("Setup")
     draw.widgets.separator()
-    components.DrawConfiguredBanPoolControl(draw, root)
+    components.DrawConfiguredBanPoolControl(draw, data, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(draw, root, banPool, {
+        components.DrawForceBanRow(draw, data, root, banPool, {
             label = banPool.label == "Bans" and "Force 1" or banPool.label,
         })
     end
 end
 
-local function DrawOtherGodsTab(draw)
+local function DrawOtherGodsTab(draw, data, services)
     local imgui = draw.imgui
-    local session = draw.session
+    local activeRootField = data.get(ACTIVE_OTHER_GOD_ROOT_ALIAS)
     local tabs = {}
-    for _, root in ipairs(BuildOtherGodRoots(session)) do
+    for _, root in ipairs(BuildOtherGodRoots(data)) do
         tabs[#tabs + 1] = {
             key = root.id,
-            label = GetNavLabel(root, session),
+            label = GetNavLabel(root, data),
             color = uiData.GetGodColor(root.primaryGodKey),
         }
     end
@@ -76,28 +76,28 @@ local function DrawOtherGodsTab(draw)
         id = "BoonBansOtherGodsTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
-        activeKey = session.view[ACTIVE_OTHER_GOD_ROOT_ALIAS],
+        activeKey = activeRootField:read(),
     })
-    if activeRootId ~= session.view[ACTIVE_OTHER_GOD_ROOT_ALIAS] then
-        session.write(ACTIVE_OTHER_GOD_ROOT_ALIAS, activeRootId)
+    if activeRootId ~= activeRootField:read() then
+        activeRootField:write(activeRootId)
     end
 
-    local root = GetActiveRoot(session)
+    local root = GetActiveRoot(data)
 
     imgui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
         if #root.banPools > 1 and imgui.BeginTabItem("Setup") then
-            DrawForcePanel(draw, root)
+            DrawForcePanel(draw, data, root)
             imgui.EndTabItem()
         end
         for _, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, banPool.key, "other_gods")
+                components.DrawBanPanel(draw, data, services, banPool.key, "other_gods")
                 imgui.EndTabItem()
             end
         end
         if root.hasRarity and imgui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(draw, root)
+            components.DrawRarityPanel(draw, data, root)
             imgui.EndTabItem()
         end
         imgui.EndTabBar()

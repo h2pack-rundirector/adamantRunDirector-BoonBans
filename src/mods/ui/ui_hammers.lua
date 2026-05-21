@@ -11,20 +11,20 @@ local HAMMER_ROOT_KEYS = {
     "Suit",
 }
 
-local function BuildHammerRoots(session)
+local function BuildHammerRoots(data)
     local roots = {}
     for _, godKey in ipairs(HAMMER_ROOT_KEYS) do
         roots[#roots + 1] = uiData.BuildBanPoolRoot(godKey, {
-            session = session,
+            data = data,
             hasRarity = false,
         })
     end
     return roots
 end
 
-local function IsHammerCustomized(root, session)
+local function IsHammerCustomized(root, data)
     for _, banPool in ipairs(root.banPools) do
-        if banConfig.IsBanPoolCustomized(banPool.key, session) then
+        if banConfig.IsBanPoolCustomized(banPool.key, data) then
             return true
         end
     end
@@ -36,47 +36,47 @@ local function IsHammerEquipped(root)
     return equippedWeapon ~= "" and equippedWeapon:find(root.id, 1, true) ~= nil
 end
 
-local function GetHammerNavLabel(root, session)
+local function GetHammerNavLabel(root, data)
     local label = root.label
     if IsHammerEquipped(root) then
         label = "» " .. label .. " «"
     end
-    if IsHammerCustomized(root, session) then
+    if IsHammerCustomized(root, data) then
         label = label .. " *"
     end
     return label
 end
 
-local function GetActiveHammerRoot(session)
-    local activeRootId = session.view[ACTIVE_HAMMER_ROOT_ALIAS]
-    for _, root in ipairs(BuildHammerRoots(session)) do
+local function GetActiveHammerRoot(data)
+    local activeRootId = data.get(ACTIVE_HAMMER_ROOT_ALIAS):read()
+    for _, root in ipairs(BuildHammerRoots(data)) do
         if root.id == activeRootId then
             return root
         end
     end
-    return uiData.BuildBanPoolRoot(HAMMER_ROOT_KEYS[1], { session = session, hasRarity = false })
+    return uiData.BuildBanPoolRoot(HAMMER_ROOT_KEYS[1], { data = data, hasRarity = false })
 end
 
-local function DrawHammerForcePanel(draw, root)
+local function DrawHammerForcePanel(draw, data, root)
     draw.widgets.text("Setup")
     draw.widgets.separator()
-    components.DrawConfiguredBanPoolControl(draw, root)
+    components.DrawConfiguredBanPoolControl(draw, data, root)
     for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(draw, root, banPool, {
+        components.DrawForceBanRow(draw, data, root, banPool, {
             controlWidth = 200,
             drawRarity = false,
         })
     end
 end
 
-local function DrawHammersTab(draw)
+local function DrawHammersTab(draw, data, services)
     local imgui = draw.imgui
-    local session = draw.session
+    local activeRootField = data.get(ACTIVE_HAMMER_ROOT_ALIAS)
     local tabs = {}
-    for _, root in ipairs(BuildHammerRoots(session)) do
+    for _, root in ipairs(BuildHammerRoots(data)) do
         tabs[#tabs + 1] = {
             key = root.id,
-            label = GetHammerNavLabel(root, session),
+            label = GetHammerNavLabel(root, data),
             color = uiData.GetGodColor(root.primaryGodKey),
         }
     end
@@ -85,29 +85,29 @@ local function DrawHammersTab(draw)
         id = "BoonBansHammersTabs",
         navWidth = uiData.ROOT_NAV_WIDTH,
         tabs = tabs,
-        activeKey = session.view[ACTIVE_HAMMER_ROOT_ALIAS],
+        activeKey = activeRootField:read(),
     })
-    if activeRootId ~= session.view[ACTIVE_HAMMER_ROOT_ALIAS] then
-        session.write(ACTIVE_HAMMER_ROOT_ALIAS, activeRootId)
+    if activeRootId ~= activeRootField:read() then
+        activeRootField:write(activeRootId)
     end
 
-    local root = GetActiveHammerRoot(session)
+    local root = GetActiveHammerRoot(data)
 
     imgui.BeginChild("BoonBansHammersDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansHammersViews##" .. root.id) then
         if imgui.BeginTabItem("Setup") then
-            DrawHammerForcePanel(draw, root)
+            DrawHammerForcePanel(draw, data, root)
             imgui.EndTabItem()
         end
         for _, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, banPool.key, "hammer")
+                components.DrawBanPanel(draw, data, services, banPool.key, "hammer")
                 imgui.EndTabItem()
             end
         end
         imgui.EndTabBar()
     else
-        DrawHammerForcePanel(draw, root)
+        DrawHammerForcePanel(draw, data, root)
     end
     imgui.EndChild()
 end

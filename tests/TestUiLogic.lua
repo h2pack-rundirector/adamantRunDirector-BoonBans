@@ -29,14 +29,19 @@ function TestUiModel:testBuildPackedBanValueColorsIncludesOnlySpecialBoons()
 end
 
 function TestUiModel:testGetVisibleBanCountUsesTextFilterOnly()
-    local session = {
-        view = {
-            BanFilterText = "cast",
-        },
+    local data = {
+        get = function(alias)
+            lu.assertEquals(alias, "BanFilterText")
+            return {
+                read = function()
+                    return "cast"
+                end,
+            }
+        end,
     }
 
-    lu.assertEquals(self.ui.GetVisibleBanCount("Apollo", session), 1)
-    lu.assertEquals(self.ui.GetVisibleBanCount("Circe", session), 0)
+    lu.assertEquals(self.ui.GetVisibleBanCount("Apollo", data), 1)
+    lu.assertEquals(self.ui.GetVisibleBanCount("Circe", data), 0)
 end
 
 function TestUiModel:testBuildBanPoolRootUsesConfiguredPoolCount()
