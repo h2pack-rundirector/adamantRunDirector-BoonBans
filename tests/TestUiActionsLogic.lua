@@ -40,12 +40,12 @@ local function MakeSession()
             table.remove(rows, index)
         end
 
-        function tableHandle.rowHandle(_, index)
+        function tableHandle.get(_, index, childAlias)
             return {
-                read = function(childAlias)
+                read = function()
                     return rows[index] and rows[index][childAlias] or nil
                 end,
-                write = function(childAlias, value)
+                write = function(_, value)
                     rows[index][childAlias] = value
                 end,
             }
@@ -87,19 +87,8 @@ function TestUiActionsLogic:setUp()
             end,
             ResolveBanFields = function(banPoolKey, session)
                 local index = banPoolKey == "Apollo2" and 2 or 1
-                local row = session.table("ApolloBanPools"):rowHandle(index)
                 return {
-                    bans = {
-                        read = function()
-                            return row.read("Bans")
-                        end,
-                        write = function(_, value)
-                            return row.write("Bans", value)
-                        end,
-                        alias = function()
-                            return "Bans"
-                        end,
-                    },
+                    bans = session.table("ApolloBanPools"):get(index, "Bans"),
                 }
             end,
         },

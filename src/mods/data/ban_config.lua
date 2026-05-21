@@ -54,9 +54,8 @@ local function CreateBanConfig(godDefs, banPools)
         end
 
         local tableHandle = handle.table(banPools.getTableAlias(banPoolKey))
-        local row = tableHandle:rowHandle(banPools.getBanPoolIndex(banPoolKey))
         return {
-            bans = row:field(banPools.BAN_POOL_ALIAS),
+            bans = tableHandle:get(banPools.getBanPoolIndex(banPoolKey), banPools.BAN_POOL_ALIAS),
         }
     end
 
