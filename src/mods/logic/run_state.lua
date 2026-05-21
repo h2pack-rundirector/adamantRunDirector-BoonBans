@@ -10,7 +10,7 @@ local function create(host, store)
     runState.scratch = {}
 
     local function GetCache()
-        local cache = host.gameCache.currentRun.get("run", function()
+        local cache = host.cache.currentRun.get("run", function()
             return {
                 BanPoolPickCounts = {},
                 ImproveFirstNBoonRarity = store.read("ImproveFirstNBoonRarity") or 0,

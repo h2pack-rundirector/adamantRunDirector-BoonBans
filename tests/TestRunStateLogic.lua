@@ -15,17 +15,17 @@ end
 
 local function MakeHost()
     return {
-        gameCache = {
+        cache = {
             currentRun = {
                 get = function(key, factory)
                     if not CurrentRun then
                         return nil
                     end
-                    CurrentRun.__testGameCache = CurrentRun.__testGameCache or {}
-                    if CurrentRun.__testGameCache[key] == nil then
-                        CurrentRun.__testGameCache[key] = factory()
+                    CurrentRun.__testCache = CurrentRun.__testCache or {}
+                    if CurrentRun.__testCache[key] == nil then
+                        CurrentRun.__testCache[key] = factory()
                     end
-                    return CurrentRun.__testGameCache[key]
+                    return CurrentRun.__testCache[key]
                 end,
             },
         },
