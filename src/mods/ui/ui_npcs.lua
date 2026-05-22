@@ -33,17 +33,17 @@ local function IsRegionMatch(group, regionValue)
     return true
 end
 
-local function IsRootCustomized(root, data)
-    return banConfig.IsBanPoolCustomized(root.primaryGodKey, data)
+local function IsRootCustomized(root, state)
+    return banConfig.IsBanPoolCustomized(root.primaryGodKey, state)
 end
 
-local function GetVisibleNpcRoots(data)
-    local regionValue = data and data.get(uiData.NPC_VIEW_REGION_ALIAS):read() or 4
+local function GetVisibleNpcRoots(state)
+    local regionValue = state and state.get(uiData.NPC_VIEW_REGION_ALIAS):read() or 4
     local roots = {}
     for _, spec in ipairs(NPC_ROOTS) do
         if IsRegionMatch(spec.group, regionValue) then
             roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, {
-                data = data,
+                state = state,
                 label = spec.label,
                 group = spec.group,
                 hasRarity = spec.hasRarity,
@@ -53,9 +53,9 @@ local function GetVisibleNpcRoots(data)
     return roots
 end
 
-local function GetNavLabel(root, data)
+local function GetNavLabel(root, state)
     local label = root.label
-    if IsRootCustomized(root, data) then
+    if IsRootCustomized(root, state) then
         label = label .. " *"
     end
     return label
@@ -90,16 +90,16 @@ local function GetActiveRoot(visibleRoots, activeRootId)
     return visibleRoots[1]
 end
 
-local function DrawRegionFilter(draw, data)
+local function DrawRegionFilter(draw, state)
     local imgui = draw.imgui
 
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter NPC Sources:")
     imgui.SameLine()
-    draw.widgets.radio(data.get(uiData.NPC_VIEW_REGION_ALIAS), npcRegionRadioOpts)
+    draw.widgets.radio(state.get(uiData.NPC_VIEW_REGION_ALIAS), npcRegionRadioOpts)
 end
 
-local function SetNpcTab(index, root, data)
+local function SetNpcTab(index, root, state)
     local tab = npcTabs[index]
     if not tab then
         tab = {}
@@ -107,7 +107,7 @@ local function SetNpcTab(index, root, data)
     end
 
     tab.key = root.id
-    tab.label = GetNavLabel(root, data)
+    tab.label = GetNavLabel(root, state)
     tab.color = uiData.GetGodColor(root.primaryGodKey)
     tab.group = root.group
 end
@@ -118,14 +118,14 @@ local function TrimNpcTabs(tabCount)
     end
 end
 
-local function DrawNpcsTab(draw, data, services)
+local function DrawNpcsTab(draw, state, services)
     local imgui = draw.imgui
-    local activeRootField = data.get(ACTIVE_NPC_ROOT_ALIAS)
+    local activeRootField = state.get(ACTIVE_NPC_ROOT_ALIAS)
 
-    DrawRegionFilter(draw, data)
+    DrawRegionFilter(draw, state)
     imgui.Spacing()
 
-    local visibleRoots = GetVisibleNpcRoots(data)
+    local visibleRoots = GetVisibleNpcRoots(state)
     if #visibleRoots == 0 then
         draw.widgets.text("No NPC sources match the current filter.", mutedTextOpts)
         return
@@ -134,7 +134,7 @@ local function DrawNpcsTab(draw, data, services)
     local tabCount = 0
     for _, root in ipairs(visibleRoots) do
         tabCount = tabCount + 1
-        SetNpcTab(tabCount, root, data)
+        SetNpcTab(tabCount, root, state)
     end
     TrimNpcTabs(tabCount)
 
@@ -152,11 +152,11 @@ local function DrawNpcsTab(draw, data, services)
     imgui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if imgui.BeginTabItem("Bans") then
-            components.DrawBanPanel(draw, data, services, root.primaryGodKey, "npcs")
+            components.DrawBanPanel(draw, state, services, root.primaryGodKey, "npcs")
             imgui.EndTabItem()
         end
         if root.hasRarity and imgui.BeginTabItem("Rarity") then
-            components.DrawRarityPanel(draw, data, root)
+            components.DrawRarityPanel(draw, state, root)
             imgui.EndTabItem()
         end
         imgui.EndTabBar()
@@ -167,7 +167,7 @@ end
 local module = {}
 
 function module.bind(deps)
-    banConfig = deps.data.banConfig
+    banConfig = deps.state.banConfig
     uiData = deps.model
     components = deps.components
     npcTabs = {}

@@ -14,7 +14,7 @@ local function MakeData()
         { Bans = 1 },
     }
 
-    local data = {}
+    local state = {}
 
     local function MakeField(alias)
         return {
@@ -52,18 +52,18 @@ local function MakeData()
         }
     end
 
-    function data.get(alias)
+    function state.get(alias)
         if alias == "ApolloBanPools" then
             return tableHandle
         end
         return MakeField(alias)
     end
 
-    return data, values, rows
+    return state, values, rows
 end
 
 function TestUiActionsLogic:setUp()
-    self.data = {
+    self.state = {
         godDefs = {
             Apollo = {
                 rarityVar = "PackedApolloRarity",
@@ -90,15 +90,15 @@ function TestUiActionsLogic:setUp()
             GetMaxConfigurableBanPools = function()
                 return 3
             end,
-            ResolveBanFields = function(banPoolKey, data)
+            ResolveBanFields = function(banPoolKey, state)
                 local index = banPoolKey == "Apollo2" and 2 or 1
                 return {
-                    bans = data.get("ApolloBanPools"):get(index, "Bans"),
+                    bans = state.get("ApolloBanPools"):get(index, "Bans"),
                 }
             end,
         },
     }
-    self.actions = dofile("src/mods/ui/ui_actions.lua").create(self.data)
+    self.actions = dofile("src/mods/ui/ui_actions.lua").create(self.state)
     self.dataRefs, self.values, self.rows = MakeData()
     self.services = {
         logIf = function() end,

@@ -90,7 +90,7 @@ function TestDataLogic.testBanPoolsExposeStableAliasesKeysAndMasks()
     lu.assertEquals(banPools.getBanMask("Apollo"), 3)
 end
 
-function TestDataLogic.testBanConfigProjectsStoreAndSessionThroughTableRows()
+function TestDataLogic.testBanConfigProjectsStoreAndStateThroughTableRows()
     local godDefs = MakeGodDefs()
     local banPools = dofile("src/mods/data/ban_pools.lua").create(godDefs, MakeBaseCatalog())
     local banConfig = dofile("src/mods/data/ban_config.lua").create(godDefs, banPools)

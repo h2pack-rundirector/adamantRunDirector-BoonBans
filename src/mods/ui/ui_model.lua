@@ -73,7 +73,7 @@ local function IsRarityGod(godKey)
     return type(def) == "table" and def.rarityVar ~= nil
 end
 
-local function BuildBanPools(godKey, data)
+local function BuildBanPools(godKey, state)
     local maxBanPools = banPools.getMaxBanPools(godKey)
     if maxBanPools <= 1 then
         return {
@@ -81,7 +81,7 @@ local function BuildBanPools(godKey, data)
         }
     end
 
-    local configuredBanPools = banConfig.GetConfiguredBanPoolCount(godKey, data)
+    local configuredBanPools = banConfig.GetConfiguredBanPoolCount(godKey, state)
     if configuredBanPools < 1 then configuredBanPools = 1 end
     if configuredBanPools > maxBanPools then configuredBanPools = maxBanPools end
     local rootBanPools = {}
@@ -167,14 +167,14 @@ function uiData.GetBoonText(boon)
     return boon.Name or boon.Key or ""
 end
 
-function uiData.GetVisibleBanCount(banPoolKey, data)
+function uiData.GetVisibleBanCount(banPoolKey, state)
     if type(banPoolKey) ~= "string" or banPoolKey == "" then
         return 0
     end
 
     local filterText = ""
-    if data then
-        filterText = tostring(data.get(uiData.BAN_FILTER_TEXT_ALIAS):read() or ""):lower()
+    if state then
+        filterText = tostring(state.get(uiData.BAN_FILTER_TEXT_ALIAS):read() or ""):lower()
     end
     local visibleCount = 0
 
@@ -209,16 +209,16 @@ function uiData.BuildBanPoolRoot(godKey, opts)
         maxBanPools = maxBanPools,
         hasRarity = opts.hasRarity ~= nil and opts.hasRarity or IsRarityGod(godKey),
         hasBridalGlow = opts.hasBridalGlow == true,
-        banPools = BuildBanPools(godKey, opts.data),
+        banPools = BuildBanPools(godKey, opts.state),
     }
 end
 
 return {
-    create = function(data)
-        godCatalog = data.catalog.entries
-        godDefs = data.godDefs
-        banConfig = data.banConfig
-        banPools = data.banPools
+    create = function(state)
+        godCatalog = state.catalog.entries
+        godDefs = state.godDefs
+        banConfig = state.banConfig
+        banPools = state.banPools
         packedBanDisplayValuesByBanPool = {}
         packedBanValueColorsByBanPool = {}
         return uiData

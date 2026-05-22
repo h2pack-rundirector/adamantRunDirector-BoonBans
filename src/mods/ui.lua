@@ -11,27 +11,27 @@ local FIRST_N_RARITY_DROPDOWN_OPTS = {
     controlWidth = 60,
 }
 
-local function DrawSettingsTab(draw, data, services)
+local function DrawSettingsTab(draw, state, services)
     local imgui = draw.imgui
 
-    draw.widgets.dropdown(data.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
+    draw.widgets.dropdown(state.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
     draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
         confirmLabel = "Confirm RESET ALL BANS",
         onConfirm = function()
-            uiActions.ResetAllBans(data, services)
+            uiActions.ResetAllBans(state, services)
         end,
     })
     draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
         confirmLabel = "Confirm RESET ALL RARITY",
         onConfirm = function()
-            uiActions.ResetAllRarity(data)
+            uiActions.ResetAllRarity(state)
         end,
     })
 end
 
-function module.drawTab(draw, data, _, services)
+function module.drawTab(draw, state, _, services)
     local imgui = draw.imgui
 
     if not imgui.BeginTabBar("BoonBansLeanTabs") then
@@ -39,27 +39,27 @@ function module.drawTab(draw, data, _, services)
     end
 
     if imgui.BeginTabItem("Olympians") then
-        olympiansUi.draw(draw, data, services)
+        olympiansUi.draw(draw, state, services)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Other Gods") then
-        otherGodsUi.draw(draw, data, services)
+        otherGodsUi.draw(draw, state, services)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Hammers") then
-        hammersUi.draw(draw, data, services)
+        hammersUi.draw(draw, state, services)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("NPCs") then
-        npcsUi.draw(draw, data, services)
+        npcsUi.draw(draw, state, services)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Settings") then
-        DrawSettingsTab(draw, data, services)
+        DrawSettingsTab(draw, state, services)
         imgui.EndTabItem()
     end
 
@@ -67,22 +67,22 @@ function module.drawTab(draw, data, _, services)
     return false
 end
 
-function module.drawQuickContent(draw, data, _, services)
+function module.drawQuickContent(draw, state, _, services)
     draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
         confirmLabel = "Confirm Reset All",
         onConfirm = function()
-            uiActions.ResetAllControls(data, services)
+            uiActions.ResetAllControls(state, services)
         end,
     })
 end
 
-function module.bind(data)
-    local uiModel = import("mods/ui/ui_model.lua").create(data)
-    uiActions = import("mods/ui/ui_actions.lua").create(data)
+function module.bind(state)
+    local uiModel = import("mods/ui/ui_model.lua").create(state)
+    uiActions = import("mods/ui/ui_actions.lua").create(state)
     local uiComponentsModule = import("mods/ui/ui_components.lua")
-    local uiComponents = uiComponentsModule.bind(data, uiModel, uiActions)
+    local uiComponents = uiComponentsModule.bind(state, uiModel, uiActions)
     local uiDeps = {
-        data = data,
+        state = state,
         model = uiModel,
         actions = uiActions,
         components = uiComponents,
