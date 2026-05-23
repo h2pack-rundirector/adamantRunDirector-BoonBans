@@ -1,8 +1,8 @@
 local uiData, uiActions, components = nil, nil, nil
 local banConfig = nil
+local godAvailability = nil
 local ACTIVE_OLYMPIAN_ROOT_ALIAS = "ActiveOlympianRoot"
 local BRIDAL_GLOW_ROOT_ALIAS = "BridalGlowRoot"
-local GOD_AVAILABILITY_INTEGRATION = "run-director.god-availability"
 local EMPTY_LIST = {}
 local bridalGlowBoonsByRoot = {}
 local mutedTextOpts = nil
@@ -44,12 +44,12 @@ local function IsRootCustomized(root, state)
 end
 
 local function IsGodPoolFilteringActive(services)
-    return services.invokeIntegration(GOD_AVAILABILITY_INTEGRATION, "isActive", false) == true
+    return godAvailability and godAvailability.isActive(services) == true
 end
 
 local function IsGodVisibleInGodPool(services, godKey)
     local resolvedGodKey = banConfig.ResolveGodKey(godKey)
-    return services.invokeIntegration(GOD_AVAILABILITY_INTEGRATION, "isAvailable", true, resolvedGodKey) ~= false
+    return not godAvailability or godAvailability.isAvailable(services, resolvedGodKey) ~= false
 end
 
 local function GetVisibleOlympianRoots(services, state)
@@ -326,6 +326,7 @@ function module.bind(deps)
     uiData = deps.model
     uiActions = deps.actions
     components = deps.components
+    godAvailability = deps.godAvailability
     mutedTextOpts = {
         color = uiData.MUTED_TEXT_COLOR,
     }

@@ -81,7 +81,7 @@ lib = {
         return false
     end,
     integrations = {
-        invoke = function(_, _, fallback)
+        poll = function(_, _, fallback)
             return fallback
         end,
     },

@@ -86,6 +86,7 @@ function module.bind(state)
         model = uiModel,
         actions = uiActions,
         components = uiComponents,
+        godAvailability = state.godAvailability,
     }
     olympiansUi = import("mods/ui/ui_olympians.lua").bind(uiDeps)
     hammersUi = import("mods/ui/ui_hammers.lua").bind(uiDeps)
