@@ -21,7 +21,7 @@ local PLUGIN_GUID = _PLUGIN.guid
 local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
-    local godAvailability = import("mods/integrations/god_availability.lua").create()
+    local godAvailability = import("mods/cache/god_availability.lua").create()
     data.godAvailability = godAvailability
     local logic = import("mods/logic.lua").bind(data)
     local ui = import("mods/ui.lua").bind(data)
@@ -46,12 +46,10 @@ local function init()
         rom.gui.add_to_menu_bar(fallbackUi.addMenuBar)
     end)
     logic.registerHooks(host, store)
-    godAvailability.listen(host)
     local ok = host.activate()
     if not ok then
         return
     end
-    godAvailability.refresh(host)
 end
 
 local loader = reload.auto_single()
