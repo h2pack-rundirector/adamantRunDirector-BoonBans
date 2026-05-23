@@ -10,6 +10,27 @@ local FIRST_N_RARITY_DROPDOWN_OPTS = {
     values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
     controlWidth = 60,
 }
+local RESET_ALL_BANS_CONFIRM_OPTS = {
+    confirmLabel = "Confirm RESET ALL BANS",
+}
+local RESET_ALL_RARITY_CONFIRM_OPTS = {
+    confirmLabel = "Confirm RESET ALL RARITY",
+}
+local QUICK_RESET_ALL_CONFIRM_OPTS = {
+    confirmLabel = "Confirm Reset All",
+}
+
+function RESET_ALL_BANS_CONFIRM_OPTS.onConfirm()
+    uiActions.ResetAllBans(RESET_ALL_BANS_CONFIRM_OPTS.state, RESET_ALL_BANS_CONFIRM_OPTS.services)
+end
+
+function RESET_ALL_RARITY_CONFIRM_OPTS.onConfirm()
+    uiActions.ResetAllRarity(RESET_ALL_RARITY_CONFIRM_OPTS.state)
+end
+
+function QUICK_RESET_ALL_CONFIRM_OPTS.onConfirm()
+    uiActions.ResetAllControls(QUICK_RESET_ALL_CONFIRM_OPTS.state, QUICK_RESET_ALL_CONFIRM_OPTS.services)
+end
 
 local function DrawSettingsTab(draw, state, services)
     local imgui = draw.imgui
@@ -17,18 +38,12 @@ local function DrawSettingsTab(draw, state, services)
     draw.widgets.dropdown(state.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
-    draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", {
-        confirmLabel = "Confirm RESET ALL BANS",
-        onConfirm = function()
-            uiActions.ResetAllBans(state, services)
-        end,
-    })
-    draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", {
-        confirmLabel = "Confirm RESET ALL RARITY",
-        onConfirm = function()
-            uiActions.ResetAllRarity(state)
-        end,
-    })
+    RESET_ALL_BANS_CONFIRM_OPTS.state = state
+    RESET_ALL_BANS_CONFIRM_OPTS.services = services
+    draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", RESET_ALL_BANS_CONFIRM_OPTS)
+
+    RESET_ALL_RARITY_CONFIRM_OPTS.state = state
+    draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", RESET_ALL_RARITY_CONFIRM_OPTS)
 end
 
 function module.drawTab(draw, state, _, services)
@@ -68,12 +83,9 @@ function module.drawTab(draw, state, _, services)
 end
 
 function module.drawQuickContent(draw, state, _, services)
-    draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", {
-        confirmLabel = "Confirm Reset All",
-        onConfirm = function()
-            uiActions.ResetAllControls(state, services)
-        end,
-    })
+    QUICK_RESET_ALL_CONFIRM_OPTS.state = state
+    QUICK_RESET_ALL_CONFIRM_OPTS.services = services
+    draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS)
 end
 
 function module.bind(state)

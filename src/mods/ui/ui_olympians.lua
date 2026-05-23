@@ -10,6 +10,9 @@ local OLYMPIAN_NAV_OPTS = {
     id = "BoonBansOlympiansTabs",
 }
 local olympianTabs = {}
+local olympianRootsByKey = {}
+local olympianRootCountsByKey = {}
+local visibleOlympianRoots = {}
 
 local OLYMPIAN_ROOT_KEYS = {
     "Aphrodite",
@@ -23,13 +26,26 @@ local OLYMPIAN_ROOT_KEYS = {
     "Zeus",
 }
 
-local function BuildOlympianRoots(state)
+local function GetOlympianRoot(godKey, state)
+    local configuredCount = banConfig.GetConfiguredBanPoolCount(godKey, state)
+    local cached = olympianRootsByKey[godKey]
+    if cached and olympianRootCountsByKey[godKey] == configuredCount then
+        return cached
+    end
+
+    cached = uiData.BuildBanPoolRoot(godKey, {
+        state = state,
+        hasBridalGlow = godKey == "Hera",
+    })
+    olympianRootsByKey[godKey] = cached
+    olympianRootCountsByKey[godKey] = configuredCount
+    return cached
+end
+
+local function GetOlympianRoots(state)
     local roots = {}
     for _, godKey in ipairs(OLYMPIAN_ROOT_KEYS) do
-        roots[#roots + 1] = uiData.BuildBanPoolRoot(godKey, {
-            state = state,
-            hasBridalGlow = godKey == "Hera",
-        })
+        roots[#roots + 1] = GetOlympianRoot(godKey, state)
     end
     return roots
 end
@@ -43,24 +59,32 @@ local function IsRootCustomized(root, state)
     return false
 end
 
-local function IsGodPoolFilteringActive(services)
-    return godAvailability and godAvailability.isActive(services) == true
+local function ReadGodAvailabilitySnapshot(services)
+    return godAvailability and godAvailability.read(services) or nil
 end
 
-local function IsGodVisibleInGodPool(services, godKey)
+local function IsGodPoolFilteringActive(snapshot)
+    return godAvailability and godAvailability.isSnapshotActive(snapshot) == true
+end
+
+local function IsGodVisibleInGodPool(snapshot, godKey)
     local resolvedGodKey = banConfig.ResolveGodKey(godKey)
-    return not godAvailability or godAvailability.isAvailable(services, resolvedGodKey) ~= false
+    return not godAvailability or godAvailability.isSnapshotAvailable(snapshot, resolvedGodKey) ~= false
 end
 
 local function GetVisibleOlympianRoots(services, state)
-    local godPoolFiltering = IsGodPoolFilteringActive(services)
-    local roots = {}
-    for _, root in ipairs(BuildOlympianRoots(state)) do
-        if not godPoolFiltering or IsGodVisibleInGodPool(services, root.id) then
-            roots[#roots + 1] = root
+    local godAvailabilitySnapshot = ReadGodAvailabilitySnapshot(services)
+    local godPoolFiltering = IsGodPoolFilteringActive(godAvailabilitySnapshot)
+    for index = #visibleOlympianRoots, 1, -1 do
+        visibleOlympianRoots[index] = nil
+    end
+
+    for _, root in ipairs(GetOlympianRoots(state)) do
+        if not godPoolFiltering or IsGodVisibleInGodPool(godAvailabilitySnapshot, root.id) then
+            visibleOlympianRoots[#visibleOlympianRoots + 1] = root
         end
     end
-    return roots, godPoolFiltering
+    return visibleOlympianRoots, godPoolFiltering
 end
 
 local function GetNavLabel(root, state)
@@ -107,10 +131,6 @@ local function DrawForcePanel(draw, state, root)
     for _, banPool in ipairs(root.banPools) do
         components.DrawForceBanRow(draw, state, root, banPool)
     end
-end
-
-local function GetBridalGlowEligibleRoots(services, state)
-    return GetVisibleOlympianRoots(services, state)
 end
 
 local function GetBridalGlowEligibleBoons(root)
@@ -193,12 +213,11 @@ local function GetCurrentBridalGlowTargetText(eligibleRoots, selectedBoonKey)
     return "Current Target: Random"
 end
 
-local function DrawBridalGlowPanel(draw, state, services)
+local function DrawBridalGlowPanel(draw, state, eligibleRoots)
     local imgui = draw.imgui
     local targetField = state.get("BridalGlowTargetBoon")
     local rootField = state.get(BRIDAL_GLOW_ROOT_ALIAS)
     local selectedBoonKey = targetField:read() or ""
-    local eligibleRoots = GetBridalGlowEligibleRoots(services, state)
 
     draw.widgets.text("Choose the Olympian god and boon pool Bridal Glow can target.")
     draw.widgets.text(GetCurrentBridalGlowTargetText(eligibleRoots, selectedBoonKey))
@@ -311,7 +330,7 @@ local function DrawOlympiansTab(draw, state, services)
             imgui.EndTabItem()
         end
         if root.hasBridalGlow and imgui.BeginTabItem("Bridal Glow Target") then
-            DrawBridalGlowPanel(draw, state, services)
+            DrawBridalGlowPanel(draw, state, visibleRoots)
             imgui.EndTabItem()
         end
         imgui.EndTabBar()
@@ -331,6 +350,9 @@ function module.bind(deps)
         color = uiData.MUTED_TEXT_COLOR,
     }
     olympianTabs = {}
+    olympianRootsByKey = {}
+    olympianRootCountsByKey = {}
+    visibleOlympianRoots = {}
     bridalGlowBoonsByRoot = {}
     return module
 end

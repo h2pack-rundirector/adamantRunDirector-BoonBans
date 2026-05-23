@@ -13,12 +13,24 @@ end
 function module.create()
     local api = {}
 
+    function api.read(source)
+        return readSnapshot(source)
+    end
+
     function api.isActive(source)
         return readSnapshot(source).active == true
     end
 
+    function api.isSnapshotActive(snapshot)
+        return snapshot and snapshot.active == true
+    end
+
     function api.isAvailable(source, godKey)
         local snapshot = readSnapshot(source)
+        return api.isSnapshotAvailable(snapshot, godKey)
+    end
+
+    function api.isSnapshotAvailable(snapshot, godKey)
         if snapshot.active ~= true then
             return true
         end

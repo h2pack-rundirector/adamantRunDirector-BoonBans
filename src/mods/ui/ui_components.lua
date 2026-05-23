@@ -29,6 +29,21 @@ local rarityShortcutDropdownOpts = {
 local mutedTextOpts = nil
 local filteredPackedBanOptsByPool = {}
 local forcePackedDropdownOptsByPool = {}
+local clearFilterButtonOptsById = {}
+local banAllButtonOptsById = {}
+local resetButtonOptsById = {}
+
+local function OnClearFilter(opts)
+    opts.filterField:reset()
+end
+
+local function OnBanAll(opts)
+    uiActions.BanAllGodBans(opts.banPoolKey, opts.state, opts.services)
+end
+
+local function OnResetBans(opts)
+    uiActions.ResetGodBans(opts.banPoolKey, opts.state, opts.services)
+end
 
 function components.bind(state, model, actions)
     banConfig = state.banConfig
@@ -44,6 +59,9 @@ function components.bind(state, model, actions)
     rarityShortcutDropdownOpts.valueColors = uiData.RARITY_COLORS
     filteredPackedBanOptsByPool = {}
     forcePackedDropdownOptsByPool = {}
+    clearFilterButtonOptsById = {}
+    banAllButtonOptsById = {}
+    resetButtonOptsById = {}
     return components
 end
 
@@ -93,22 +111,67 @@ local function GetForcePackedDropdownOpts(banPoolKey, controlWidth)
     return cached
 end
 
+local function GetClearFilterButtonOpts(id, filterField)
+    local opts = clearFilterButtonOptsById[id]
+    if not opts then
+        opts = {
+            id = id,
+        }
+        function opts.onClick()
+            OnClearFilter(opts)
+        end
+        clearFilterButtonOptsById[id] = opts
+    end
+    opts.filterField = filterField
+    return opts
+end
+
+local function GetBanAllButtonOpts(id, banPoolKey, state, services)
+    local opts = banAllButtonOptsById[id]
+    if not opts then
+        opts = {
+            id = id,
+        }
+        function opts.onClick()
+            OnBanAll(opts)
+        end
+        banAllButtonOptsById[id] = opts
+    end
+    opts.banPoolKey = banPoolKey
+    opts.state = state
+    opts.services = services
+    return opts
+end
+
+local function GetResetButtonOpts(id, banPoolKey, state, services)
+    local opts = resetButtonOptsById[id]
+    if not opts then
+        opts = {
+            id = id,
+        }
+        function opts.onClick()
+            OnResetBans(opts)
+        end
+        resetButtonOptsById[id] = opts
+    end
+    opts.banPoolKey = banPoolKey
+    opts.state = state
+    opts.services = services
+    return opts
+end
+
 function components.DrawBanSearchControls(draw, state, idSuffix)
     local imgui = draw.imgui
     local filterField = state.get(uiData.BAN_FILTER_TEXT_ALIAS)
     idSuffix = tostring(idSuffix or "")
+    local clearId = "boon_bans_filter_clear_" .. idSuffix
 
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter:")
     imgui.SameLine()
     draw.widgets.inputText(filterField, BAN_FILTER_INPUT_OPTS)
     imgui.SameLine()
-    draw.widgets.button("Clear", {
-        id = "boon_bans_filter_clear_" .. idSuffix,
-        onClick = function()
-            filterField:reset()
-        end,
-    })
+    draw.widgets.button("Clear", GetClearFilterButtonOpts(clearId, filterField))
 end
 
 function components.DrawFilteredPackedBanList(draw, state, banPoolKey, opts)
@@ -217,24 +280,16 @@ end
 
 function components.DrawBanPanel(draw, state, services, banPoolKey, idPrefix)
     local imgui = draw.imgui
+    local banAllId = idPrefix .. "_ban_all_" .. banPoolKey
+    local resetId = idPrefix .. "_reset_" .. banPoolKey
 
     components.DrawBanSearchControls(draw, state, banPoolKey)
     imgui.SameLine()
     imgui.SetCursorPosX(imgui.GetCursorPosX() + 100)
 
-    draw.widgets.button("Ban All", {
-        id = idPrefix .. "_ban_all_" .. banPoolKey,
-        onClick = function()
-            uiActions.BanAllGodBans(banPoolKey, state, services)
-        end,
-    })
+    draw.widgets.button("Ban All", GetBanAllButtonOpts(banAllId, banPoolKey, state, services))
     imgui.SameLine()
-    draw.widgets.button("Reset", {
-        id = idPrefix .. "_reset_" .. banPoolKey,
-        onClick = function()
-            uiActions.ResetGodBans(banPoolKey, state, services)
-        end,
-    })
+    draw.widgets.button("Reset", GetResetButtonOpts(resetId, banPoolKey, state, services))
 
     draw.widgets.separator()
     components.DrawFilteredPackedBanList(draw, state, banPoolKey)

@@ -6,6 +6,9 @@ local OTHER_GODS_NAV_OPTS = {
     id = "BoonBansOtherGodsTabs",
 }
 local otherGodTabs = {}
+local otherGodRoots = {}
+local otherGodRootsByKey = {}
+local otherGodRootCountsByKey = {}
 
 local OTHER_GOD_ROOT_SPECS = {
     { id = "Hermes" },
@@ -19,12 +22,28 @@ local OTHER_GOD_ROOT_SPECS = {
     { id = "Judgement3" },
 }
 
-local function BuildOtherGodRoots(state)
-    local roots = {}
-    for _, spec in ipairs(OTHER_GOD_ROOT_SPECS) do
-        roots[#roots + 1] = uiData.BuildBanPoolRoot(spec.id, { state = state })
+local function GetOtherGodRoot(godKey, state)
+    local configuredCount = banConfig.GetConfiguredBanPoolCount(godKey, state)
+    local cached = otherGodRootsByKey[godKey]
+    if cached and otherGodRootCountsByKey[godKey] == configuredCount then
+        return cached
     end
-    return roots
+
+    cached = uiData.BuildBanPoolRoot(godKey, { state = state })
+    otherGodRootsByKey[godKey] = cached
+    otherGodRootCountsByKey[godKey] = configuredCount
+    return cached
+end
+
+local function GetOtherGodRoots(state)
+    for index = #otherGodRoots, 1, -1 do
+        otherGodRoots[index] = nil
+    end
+
+    for _, spec in ipairs(OTHER_GOD_ROOT_SPECS) do
+        otherGodRoots[#otherGodRoots + 1] = GetOtherGodRoot(spec.id, state)
+    end
+    return otherGodRoots
 end
 
 local function IsRootCustomized(root, state)
@@ -44,14 +63,13 @@ local function GetNavLabel(root, state)
     return label
 end
 
-local function GetActiveRoot(state)
-    local activeRootId = state.get(ACTIVE_OTHER_GOD_ROOT_ALIAS):read()
-    for _, root in ipairs(BuildOtherGodRoots(state)) do
+local function GetActiveRoot(roots, activeRootId)
+    for _, root in ipairs(roots) do
         if root.id == activeRootId then
             return root
         end
     end
-    return BuildOtherGodRoots(state)[1]
+    return roots[1]
 end
 
 local function GetForceRowOpts(banPool)
@@ -96,26 +114,28 @@ end
 local function DrawOtherGodsTab(draw, state, services)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OTHER_GOD_ROOT_ALIAS)
+    local roots = GetOtherGodRoots(state)
     local tabCount = 0
-    for _, root in ipairs(BuildOtherGodRoots(state)) do
+    for _, root in ipairs(roots) do
         tabCount = tabCount + 1
         SetOtherGodTab(tabCount, root, state)
     end
     TrimOtherGodTabs(tabCount)
 
+    local activeRootValue = activeRootField:read()
     OTHER_GODS_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
     OTHER_GODS_NAV_OPTS.tabs = otherGodTabs
-    OTHER_GODS_NAV_OPTS.activeKey = activeRootField:read()
+    OTHER_GODS_NAV_OPTS.activeKey = activeRootValue
     local activeRootId = draw.nav.verticalTabs(OTHER_GODS_NAV_OPTS)
-    if activeRootId ~= activeRootField:read() then
+    if activeRootId ~= activeRootValue then
         activeRootField:write(activeRootId)
     end
 
-    local root = GetActiveRoot(state)
+    local root = GetActiveRoot(roots, activeRootId)
 
     imgui.BeginChild("BoonBansOtherGodsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansOtherGodsViews##" .. root.id) then
-        if #root.banPools > 1 and imgui.BeginTabItem("Setup") then
+        if (root.maxBanPools or 1) > 1 and imgui.BeginTabItem("Setup") then
             DrawForcePanel(draw, state, root)
             imgui.EndTabItem()
         end
@@ -142,6 +162,9 @@ function module.bind(deps)
     components = deps.components
     forceRowOptsByLabel = {}
     otherGodTabs = {}
+    otherGodRoots = {}
+    otherGodRootsByKey = {}
+    otherGodRootCountsByKey = {}
     return module
 end
 
