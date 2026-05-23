@@ -8,7 +8,7 @@ require("tests/TestEntrypoint")
 require("tests/TestLootLogic")
 require("tests/TestNpcLogic")
 require("tests/TestRunStateLogic")
-require("tests/TestUiActionsLogic")
+require("tests/TestUiCommandsLogic")
 require("tests/TestUiLogic")
 
 local lu = require("luaunit")

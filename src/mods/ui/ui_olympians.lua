@@ -1,4 +1,4 @@
-local uiData, uiActions, components = nil, nil, nil
+local uiData, uiCommands, components = nil, nil, nil
 local banConfig = nil
 local godAvailability = nil
 local ACTIVE_OLYMPIAN_ROOT_ALIAS = "ActiveOlympianRoot"
@@ -251,12 +251,12 @@ local function DrawBridalGlowPanel(draw, state, eligibleRoots)
     draw.widgets.text("Eligible Boons", mutedTextOpts)
     draw.widgets.separator()
     if imgui.Selectable("Random", selectedBoonKey == "") then
-        uiActions.SetBridalGlowTargetBoonKey(nil, state)
+        uiCommands.SetBridalGlowTargetBoonKey(nil, state)
         selectedBoonKey = ""
     end
     for _, boon in ipairs(eligibleBoons) do
         if imgui.Selectable(boon.BridalGlowLabel, boon.Key == selectedBoonKey) then
-            uiActions.SetBridalGlowTargetBoonKey(boon.Key, state)
+            uiCommands.SetBridalGlowTargetBoonKey(boon.Key, state)
             selectedBoonKey = boon.Key
         end
     end
@@ -281,7 +281,7 @@ local function TrimOlympianTabs(tabCount)
     end
 end
 
-local function DrawOlympiansTab(draw, state, services)
+local function DrawOlympiansTab(draw, state, actions, services)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OLYMPIAN_ROOT_ALIAS)
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(services, state)
@@ -321,7 +321,7 @@ local function DrawOlympiansTab(draw, state, services)
         end
         for _, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, state, services, banPool.key, "olympians")
+                components.DrawBanPanel(draw, state, actions, banPool.key, "olympians")
                 imgui.EndTabItem()
             end
         end
@@ -343,7 +343,7 @@ local module = {}
 function module.bind(deps)
     banConfig = deps.state.banConfig
     uiData = deps.model
-    uiActions = deps.actions
+    uiCommands = deps.commands
     components = deps.components
     godAvailability = deps.godAvailability
     mutedTextOpts = {

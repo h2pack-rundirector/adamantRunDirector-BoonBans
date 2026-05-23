@@ -112,7 +112,7 @@ local function TrimHammerTabs(tabCount)
     end
 end
 
-local function DrawHammersTab(draw, state, services)
+local function DrawHammersTab(draw, state, actions, _)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_HAMMER_ROOT_ALIAS)
     local roots = GetHammerRoots(state)
@@ -142,7 +142,7 @@ local function DrawHammersTab(draw, state, services)
         end
         for _, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, state, services, banPool.key, "hammer")
+                components.DrawBanPanel(draw, state, actions, banPool.key, "hammer")
                 imgui.EndTabItem()
             end
         end

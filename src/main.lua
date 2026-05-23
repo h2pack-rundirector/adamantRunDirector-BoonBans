@@ -24,7 +24,8 @@ local function init()
     local godAvailability = import("mods/cache/god_availability.lua").create()
     data.godAvailability = godAvailability
     local logic = import("mods/logic.lua").bind(data)
-    local ui = import("mods/ui.lua").bind(data)
+    local uiCommands = import("mods/ui/ui_commands.lua").create(data)
+    local ui = import("mods/ui.lua").bind(data, uiCommands)
 
     local host, store = lib.createModule({
         pluginGuid = PLUGIN_GUID,
@@ -34,6 +35,26 @@ local function init()
         name = "Boon Bans",
         tooltip = "Ban boon offerings and force rarity behavior.",
         storage = data.storage,
+        actions = {
+            clearFilter = function(state)
+                uiCommands.ClearFilter(state)
+            end,
+            banAll = function(state, services, banPoolKey)
+                uiCommands.BanAllGodBans(banPoolKey, state, services)
+            end,
+            resetBans = function(state, services, banPoolKey)
+                uiCommands.ResetGodBans(banPoolKey, state, services)
+            end,
+            resetAllBans = function(state, services)
+                uiCommands.ResetAllBans(state, services)
+            end,
+            resetAllRarity = function(state)
+                uiCommands.ResetAllRarity(state)
+            end,
+            resetAllControls = function(state, services)
+                uiCommands.ResetAllControls(state, services)
+            end,
+        },
         drawTab = ui.drawTab,
         drawQuickContent = ui.drawQuickContent,
     })

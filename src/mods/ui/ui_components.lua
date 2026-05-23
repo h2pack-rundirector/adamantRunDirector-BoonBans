@@ -1,4 +1,4 @@
-local uiData, uiActions = nil, nil
+local uiData, uiCommands = nil, nil
 local banConfig = nil
 local banPools = nil
 local components = {}
@@ -33,23 +33,11 @@ local clearFilterButtonOptsById = {}
 local banAllButtonOptsById = {}
 local resetButtonOptsById = {}
 
-local function OnClearFilter(opts)
-    opts.filterField:reset()
-end
-
-local function OnBanAll(opts)
-    uiActions.BanAllGodBans(opts.banPoolKey, opts.state, opts.services)
-end
-
-local function OnResetBans(opts)
-    uiActions.ResetGodBans(opts.banPoolKey, opts.state, opts.services)
-end
-
-function components.bind(state, model, actions)
+function components.bind(state, model, commands)
     banConfig = state.banConfig
     banPools = state.banPools
     uiData = model
-    uiActions = actions
+    uiCommands = commands
     mutedTextOpts = {
         color = uiData.MUTED_TEXT_COLOR,
     }
@@ -111,56 +99,45 @@ local function GetForcePackedDropdownOpts(banPoolKey, controlWidth)
     return cached
 end
 
-local function GetClearFilterButtonOpts(id, filterField)
+local function GetClearFilterButtonOpts(id, actions)
     local opts = clearFilterButtonOptsById[id]
     if not opts then
         opts = {
             id = id,
         }
-        function opts.onClick()
-            OnClearFilter(opts)
-        end
         clearFilterButtonOptsById[id] = opts
     end
-    opts.filterField = filterField
+    opts.action = actions.get("clearFilter")
     return opts
 end
 
-local function GetBanAllButtonOpts(id, banPoolKey, state, services)
+local function GetBanAllButtonOpts(id, banPoolKey, actions)
     local opts = banAllButtonOptsById[id]
     if not opts then
         opts = {
             id = id,
         }
-        function opts.onClick()
-            OnBanAll(opts)
-        end
         banAllButtonOptsById[id] = opts
     end
-    opts.banPoolKey = banPoolKey
-    opts.state = state
-    opts.services = services
+    opts.action = actions.get("banAll")
+    opts.value = banPoolKey
     return opts
 end
 
-local function GetResetButtonOpts(id, banPoolKey, state, services)
+local function GetResetButtonOpts(id, banPoolKey, actions)
     local opts = resetButtonOptsById[id]
     if not opts then
         opts = {
             id = id,
         }
-        function opts.onClick()
-            OnResetBans(opts)
-        end
         resetButtonOptsById[id] = opts
     end
-    opts.banPoolKey = banPoolKey
-    opts.state = state
-    opts.services = services
+    opts.action = actions.get("resetBans")
+    opts.value = banPoolKey
     return opts
 end
 
-function components.DrawBanSearchControls(draw, state, idSuffix)
+function components.DrawBanSearchControls(draw, state, actions, idSuffix)
     local imgui = draw.imgui
     local filterField = state.get(uiData.BAN_FILTER_TEXT_ALIAS)
     idSuffix = tostring(idSuffix or "")
@@ -171,7 +148,7 @@ function components.DrawBanSearchControls(draw, state, idSuffix)
     imgui.SameLine()
     draw.widgets.inputText(filterField, BAN_FILTER_INPUT_OPTS)
     imgui.SameLine()
-    draw.widgets.button("Clear", GetClearFilterButtonOpts(clearId, filterField))
+    draw.widgets.button("Clear", GetClearFilterButtonOpts(clearId, actions))
 end
 
 function components.DrawFilteredPackedBanList(draw, state, banPoolKey, opts)
@@ -226,14 +203,14 @@ function components.DrawConfiguredBanPoolControl(draw, state, root)
     imgui.SameLine()
     imgui.SetCursorPosX(160)
     if imgui.Button("-##configured_ban_pools_" .. godKey) and currentCount > 1 then
-        uiActions.SetConfiguredBanPoolCount(godKey, currentCount - 1, state)
+        uiCommands.SetConfiguredBanPoolCount(godKey, currentCount - 1, state)
         currentCount = currentCount - 1
     end
     imgui.SameLine()
     imgui.Text(tostring(currentCount))
     imgui.SameLine()
     if imgui.Button("+##configured_ban_pools_" .. godKey) and currentCount < maxBanPools then
-        uiActions.SetConfiguredBanPoolCount(godKey, currentCount + 1, state)
+        uiCommands.SetConfiguredBanPoolCount(godKey, currentCount + 1, state)
     end
     imgui.Spacing()
 end
@@ -278,18 +255,18 @@ function components.DrawForceBanRow(draw, state, root, banPool, opts)
     end
 end
 
-function components.DrawBanPanel(draw, state, services, banPoolKey, idPrefix)
+function components.DrawBanPanel(draw, state, actions, banPoolKey, idPrefix)
     local imgui = draw.imgui
     local banAllId = idPrefix .. "_ban_all_" .. banPoolKey
     local resetId = idPrefix .. "_reset_" .. banPoolKey
 
-    components.DrawBanSearchControls(draw, state, banPoolKey)
+    components.DrawBanSearchControls(draw, state, actions, banPoolKey)
     imgui.SameLine()
     imgui.SetCursorPosX(imgui.GetCursorPosX() + 100)
 
-    draw.widgets.button("Ban All", GetBanAllButtonOpts(banAllId, banPoolKey, state, services))
+    draw.widgets.button("Ban All", GetBanAllButtonOpts(banAllId, banPoolKey, actions))
     imgui.SameLine()
-    draw.widgets.button("Reset", GetResetButtonOpts(resetId, banPoolKey, state, services))
+    draw.widgets.button("Reset", GetResetButtonOpts(resetId, banPoolKey, actions))
 
     draw.widgets.separator()
     components.DrawFilteredPackedBanList(draw, state, banPoolKey)

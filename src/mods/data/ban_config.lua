@@ -2,7 +2,7 @@ local function CreateBanConfig(godDefs, banPools)
     local banConfig = {}
 
     -- Read-only projection over player choices. Runtime callers pass
-    -- store; UI callers pass draw data. Writes belong in ui_actions.
+    -- store; UI callers pass draw data. Writes belong in ui_commands.
 
     local band, rshift = bit32.band, bit32.rshift
 

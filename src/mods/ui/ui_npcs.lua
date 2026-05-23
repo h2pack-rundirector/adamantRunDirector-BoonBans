@@ -118,7 +118,7 @@ local function TrimNpcTabs(tabCount)
     end
 end
 
-local function DrawNpcsTab(draw, state, services)
+local function DrawNpcsTab(draw, state, actions, _)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_NPC_ROOT_ALIAS)
 
@@ -152,7 +152,7 @@ local function DrawNpcsTab(draw, state, services)
     imgui.BeginChild("BoonBansNpcsDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansNpcsViews##" .. root.id) then
         if imgui.BeginTabItem("Bans") then
-            components.DrawBanPanel(draw, state, services, root.primaryGodKey, "npcs")
+            components.DrawBanPanel(draw, state, actions, root.primaryGodKey, "npcs")
             imgui.EndTabItem()
         end
         if root.hasRarity and imgui.BeginTabItem("Rarity") then

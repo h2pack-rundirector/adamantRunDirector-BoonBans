@@ -1,8 +1,8 @@
--- luacheck: globals TestUiActionsLogic bit32
+-- luacheck: globals TestUiCommandsLogic bit32
 
 local lu = require("luaunit")
 
-TestUiActionsLogic = {}
+TestUiCommandsLogic = {}
 
 local function MakeData()
     local values = {
@@ -62,7 +62,7 @@ local function MakeData()
     return state, values, rows
 end
 
-function TestUiActionsLogic:setUp()
+function TestUiCommandsLogic:setUp()
     self.state = {
         godDefs = {
             Apollo = {
@@ -98,55 +98,55 @@ function TestUiActionsLogic:setUp()
             end,
         },
     }
-    self.actions = dofile("src/mods/ui/ui_actions.lua").create(self.state)
+    self.commands = dofile("src/mods/ui/ui_commands.lua").create(self.state)
     self.dataRefs, self.values, self.rows = MakeData()
     self.services = {
         logIf = function() end,
     }
 end
 
-function TestUiActionsLogic:testSetConfiguredBanPoolCountAppendsRemovesAndClamps()
-    lu.assertTrue(self.actions.SetConfiguredBanPoolCount("Apollo", 3, self.dataRefs))
+function TestUiCommandsLogic:testSetConfiguredBanPoolCountAppendsRemovesAndClamps()
+    lu.assertTrue(self.commands.SetConfiguredBanPoolCount("Apollo", 3, self.dataRefs))
     lu.assertEquals(#self.rows, 3)
 
-    lu.assertFalse(self.actions.SetConfiguredBanPoolCount("Apollo", 3, self.dataRefs))
+    lu.assertFalse(self.commands.SetConfiguredBanPoolCount("Apollo", 3, self.dataRefs))
     lu.assertEquals(#self.rows, 3)
 
-    lu.assertTrue(self.actions.SetConfiguredBanPoolCount("Apollo", 0, self.dataRefs))
+    lu.assertTrue(self.commands.SetConfiguredBanPoolCount("Apollo", 0, self.dataRefs))
     lu.assertEquals(#self.rows, 1)
 end
 
-function TestUiActionsLogic:testSetBanMaskMasksWritesAndReportsNoop()
-    lu.assertTrue(self.actions.SetBanMask("Apollo", 15, self.dataRefs))
+function TestUiCommandsLogic:testSetBanMaskMasksWritesAndReportsNoop()
+    lu.assertTrue(self.commands.SetBanMask("Apollo", 15, self.dataRefs))
     lu.assertEquals(self.rows[1].Bans, 7)
 
-    lu.assertFalse(self.actions.SetBanMask("Apollo", 7, self.dataRefs))
+    lu.assertFalse(self.commands.SetBanMask("Apollo", 7, self.dataRefs))
 end
 
-function TestUiActionsLogic:testResetAllRarityClearsUniqueRarityVars()
-    lu.assertTrue(self.actions.ResetAllRarity(self.dataRefs))
+function TestUiCommandsLogic:testResetAllRarityClearsUniqueRarityVars()
+    lu.assertTrue(self.commands.ResetAllRarity(self.dataRefs))
     lu.assertEquals(self.values.PackedApolloRarity, 0)
     lu.assertEquals(self.values.PackedHeraRarity, 0)
 
-    lu.assertFalse(self.actions.ResetAllRarity(self.dataRefs))
+    lu.assertFalse(self.commands.ResetAllRarity(self.dataRefs))
 end
 
-function TestUiActionsLogic:testBanAllAndResetAllBansUseConfiguredMasks()
-    lu.assertTrue(self.actions.BanAllGodBans("Apollo", self.dataRefs, self.services))
+function TestUiCommandsLogic:testBanAllAndResetAllBansUseConfiguredMasks()
+    lu.assertTrue(self.commands.BanAllGodBans("Apollo", self.dataRefs, self.services))
     lu.assertEquals(self.rows[1].Bans, 7)
 
     self.rows[2] = { Bans = 3 }
-    lu.assertTrue(self.actions.ResetAllBans(self.dataRefs, self.services))
+    lu.assertTrue(self.commands.ResetAllBans(self.dataRefs, self.services))
     lu.assertEquals(self.rows[1].Bans, 0)
     lu.assertEquals(self.rows[2].Bans, 0)
 end
 
-function TestUiActionsLogic:testSetBridalGlowTargetWritesOnlyOnChange()
-    lu.assertTrue(self.actions.SetBridalGlowTargetBoonKey("Strike", self.dataRefs))
+function TestUiCommandsLogic:testSetBridalGlowTargetWritesOnlyOnChange()
+    lu.assertTrue(self.commands.SetBridalGlowTargetBoonKey("Strike", self.dataRefs))
     lu.assertEquals(self.values.BridalGlowTargetBoon, "Strike")
 
-    lu.assertFalse(self.actions.SetBridalGlowTargetBoonKey("Strike", self.dataRefs))
+    lu.assertFalse(self.commands.SetBridalGlowTargetBoonKey("Strike", self.dataRefs))
 
-    lu.assertTrue(self.actions.SetBridalGlowTargetBoonKey(nil, self.dataRefs))
+    lu.assertTrue(self.commands.SetBridalGlowTargetBoonKey(nil, self.dataRefs))
     lu.assertEquals(self.values.BridalGlowTargetBoon, "")
 end

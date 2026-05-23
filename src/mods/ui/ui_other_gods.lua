@@ -111,7 +111,7 @@ local function TrimOtherGodTabs(tabCount)
     end
 end
 
-local function DrawOtherGodsTab(draw, state, services)
+local function DrawOtherGodsTab(draw, state, actions, _)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OTHER_GOD_ROOT_ALIAS)
     local roots = GetOtherGodRoots(state)
@@ -141,7 +141,7 @@ local function DrawOtherGodsTab(draw, state, services)
         end
         for _, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, state, services, banPool.key, "other_gods")
+                components.DrawBanPanel(draw, state, actions, banPool.key, "other_gods")
                 imgui.EndTabItem()
             end
         end

@@ -2,7 +2,7 @@ local godDefs = nil
 local banConfig = nil
 local banPools = nil
 
-local uiActions = {}
+local uiCommands = {}
 
 local band = bit32.band
 
@@ -10,7 +10,7 @@ local function Log(services, fmt, ...)
     services.logIf(fmt, ...)
 end
 
-function uiActions.SetConfiguredBanPoolCount(godKey, count, state)
+function uiCommands.SetConfiguredBanPoolCount(godKey, count, state)
     local tableConfig = banConfig.GetBanPoolTableConfig(godKey)
     if not tableConfig then return false end
 
@@ -36,7 +36,7 @@ function uiActions.SetConfiguredBanPoolCount(godKey, count, state)
     return true
 end
 
-function uiActions.SetBanMask(banPoolKey, value, state)
+function uiCommands.SetBanMask(banPoolKey, value, state)
     if not godDefs[banPoolKey] then return false end
 
     local mask = banPools.getBanMask(banPoolKey)
@@ -51,7 +51,7 @@ function uiActions.SetBanMask(banPoolKey, value, state)
     return true
 end
 
-function uiActions.ResetAllRarity(state)
+function uiCommands.ResetAllRarity(state)
     local cleared = {}
     local changed = false
     for _, meta in pairs(godDefs) do
@@ -68,7 +68,7 @@ function uiActions.ResetAllRarity(state)
     return changed
 end
 
-function uiActions.SetBridalGlowTargetBoonKey(boonKey, state)
+function uiCommands.SetBridalGlowTargetBoonKey(boonKey, state)
     local nextValue = boonKey or ""
     local targetField = state.get("BridalGlowTargetBoon")
     local currentValue = targetField:read() or ""
@@ -79,9 +79,13 @@ function uiActions.SetBridalGlowTargetBoonKey(boonKey, state)
     return true
 end
 
-function uiActions.ResetGodBans(banPoolKey, state, services)
+function uiCommands.ClearFilter(state)
+    state.get("BanFilterText"):reset()
+end
+
+function uiCommands.ResetGodBans(banPoolKey, state, services)
     if godDefs[banPoolKey] then
-        local changed = uiActions.SetBanMask(banPoolKey, 0, state)
+        local changed = uiCommands.SetBanMask(banPoolKey, 0, state)
         if not changed then
             return false
         end
@@ -91,10 +95,10 @@ function uiActions.ResetGodBans(banPoolKey, state, services)
     return false
 end
 
-function uiActions.BanAllGodBans(banPoolKey, state, services)
+function uiCommands.BanAllGodBans(banPoolKey, state, services)
     if godDefs[banPoolKey] then
         local mask = banPools.getBanMask(banPoolKey)
-        local changed = uiActions.SetBanMask(banPoolKey, mask, state)
+        local changed = uiCommands.SetBanMask(banPoolKey, mask, state)
         if not changed then
             return false
         end
@@ -104,10 +108,10 @@ function uiActions.BanAllGodBans(banPoolKey, state, services)
     return false
 end
 
-function uiActions.ResetAllBans(state, services)
+function uiCommands.ResetAllBans(state, services)
     local changed = false
     for banPoolKey, _ in pairs(godDefs) do
-        if uiActions.ResetGodBans(banPoolKey, state, services) then
+        if uiCommands.ResetGodBans(banPoolKey, state, services) then
             changed = true
         end
     end
@@ -117,9 +121,9 @@ function uiActions.ResetAllBans(state, services)
     return changed
 end
 
-function uiActions.ResetAllControls(state, services)
-    uiActions.ResetAllBans(state, services)
-    uiActions.ResetAllRarity(state)
+function uiCommands.ResetAllControls(state, services)
+    uiCommands.ResetAllBans(state, services)
+    uiCommands.ResetAllRarity(state)
 end
 
 return {
@@ -127,6 +131,6 @@ return {
         godDefs = state.godDefs
         banConfig = state.banConfig
         banPools = state.banPools
-        return uiActions
+        return uiCommands
     end,
 }
