@@ -18,17 +18,6 @@ local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
 
-local function MergeDeclarations(...)
-    local result = {}
-    for index = 1, select("#", ...) do
-        local source = select(index, ...)
-        for key, declaration in pairs(source or {}) do
-            result[key] = declaration
-        end
-    end
-    return result
-end
-
 local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
@@ -46,10 +35,7 @@ local function init()
         name = "Boon Bans",
         tooltip = "Ban boon offerings and force rarity behavior.",
         storage = data.storage,
-        cache = MergeDeclarations(
-            logic.buildCacheDeclarations(),
-            godAvailability.buildCacheDeclarations()
-        ),
+        cache = logic.buildCacheDeclarations(),
         actions = {
             clearFilter = function(_, state)
                 uiCommands.ClearFilter(state)
@@ -81,6 +67,7 @@ local function init()
         rom.gui.add_imgui(fallbackUi.renderWindow)
         rom.gui.add_to_menu_bar(fallbackUi.addMenuBar)
     end)
+    godAvailability.registerShared(host)
     logic.registerHooks(host, store)
     local ok = host.activate()
     if not ok then

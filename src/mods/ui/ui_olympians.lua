@@ -276,7 +276,7 @@ local function TrimOlympianTabs(tabCount)
     end
 end
 
-local function DrawOlympiansTab(draw, state, actions, _)
+local function DrawOlympiansTab(draw, state, actions)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OLYMPIAN_ROOT_ALIAS)
     local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(state)

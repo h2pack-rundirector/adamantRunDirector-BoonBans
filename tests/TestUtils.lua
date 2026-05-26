@@ -80,11 +80,6 @@ lib = {
     isEnabled = function()
         return false
     end,
-    integrations = {
-        poll = function(_, _, fallback)
-            return fallback
-        end,
-    },
     store = {
         write = function(targetStore, key, value)
             if targetStore and type(targetStore.write) == "function" then

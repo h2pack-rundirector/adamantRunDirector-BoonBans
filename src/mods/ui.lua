@@ -33,7 +33,7 @@ local function DrawSettingsTab(draw, state, actions)
     draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", RESET_ALL_RARITY_CONFIRM_OPTS)
 end
 
-function module.drawTab(draw, state, actions, services)
+function module.drawTab(draw, state, actions)
     local imgui = draw.imgui
 
     if not imgui.BeginTabBar("BoonBansLeanTabs") then
@@ -41,22 +41,22 @@ function module.drawTab(draw, state, actions, services)
     end
 
     if imgui.BeginTabItem("Olympians") then
-        olympiansUi.draw(draw, state, actions, services)
+        olympiansUi.draw(draw, state, actions)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Other Gods") then
-        otherGodsUi.draw(draw, state, actions, services)
+        otherGodsUi.draw(draw, state, actions)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Hammers") then
-        hammersUi.draw(draw, state, actions, services)
+        hammersUi.draw(draw, state, actions)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("NPCs") then
-        npcsUi.draw(draw, state, actions, services)
+        npcsUi.draw(draw, state, actions)
         imgui.EndTabItem()
     end
 

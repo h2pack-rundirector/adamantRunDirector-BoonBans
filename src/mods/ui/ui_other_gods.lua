@@ -111,7 +111,7 @@ local function TrimOtherGodTabs(tabCount)
     end
 end
 
-local function DrawOtherGodsTab(draw, state, actions, _)
+local function DrawOtherGodsTab(draw, state, actions)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OTHER_GOD_ROOT_ALIAS)
     local roots = GetOtherGodRoots(state)

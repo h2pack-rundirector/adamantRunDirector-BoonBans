@@ -112,7 +112,7 @@ local function TrimHammerTabs(tabCount)
     end
 end
 
-local function DrawHammersTab(draw, state, actions, _)
+local function DrawHammersTab(draw, state, actions)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_HAMMER_ROOT_ALIAS)
     local roots = GetHammerRoots(state)

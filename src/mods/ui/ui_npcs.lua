@@ -118,7 +118,7 @@ local function TrimNpcTabs(tabCount)
     end
 end
 
-local function DrawNpcsTab(draw, state, actions, _)
+local function DrawNpcsTab(draw, state, actions)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_NPC_ROOT_ALIAS)
 

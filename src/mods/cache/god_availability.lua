@@ -19,26 +19,22 @@ end
 
 local module = {}
 
-function module.buildCacheDeclarations()
-    return {
-        [GOD_AVAILABILITY_REF] = {
-            domain = "shared",
-            id = GOD_AVAILABILITY_CACHE,
-            access = "reader",
-            fallback = {
-                active = false,
-                available = {},
-            },
+function module.registerShared(host)
+    host.shared.data.reader(GOD_AVAILABILITY_REF, {
+        id = GOD_AVAILABILITY_CACHE,
+        fallback = {
+            active = false,
+            available = {},
         },
-    }
+    })
 end
 
 function module.create()
     local api = {}
-    api.buildCacheDeclarations = module.buildCacheDeclarations
+    api.registerShared = module.registerShared
 
     function api.read(source)
-        return source.cache.shared.read(GOD_AVAILABILITY_REF)
+        return source.shared.read(GOD_AVAILABILITY_REF)
     end
 
     function api.isSnapshotActive(snapshot)
