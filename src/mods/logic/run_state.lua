@@ -1,10 +1,25 @@
 local EMPTY_COUNTS = {}
+local RUN_STATE_CACHE = "RunState"
 
 local function ReadStore(store, alias)
     return store.get(alias):read()
 end
 
-local function create(host, store)
+local function buildCacheDeclarations()
+    return {
+        [RUN_STATE_CACHE] = {
+            domain = "currentRun",
+            key = "run",
+            factory = function()
+                return {
+                    BanPoolPickCounts = {},
+                }
+            end,
+        },
+    }
+end
+
+local function create(store)
     local scratch = {
         values = {},
         maps = {},
@@ -14,12 +29,7 @@ local function create(host, store)
     runState.scratch = {}
 
     local function GetCache()
-        local cache = host.cache.currentRun.get("run", function()
-            return {
-                BanPoolPickCounts = {},
-                ImproveFirstNBoonRarity = ReadStore(store, "ImproveFirstNBoonRarity") or 0,
-            }
-        end)
+        local cache = store.cache.currentRun.get(RUN_STATE_CACHE)
         if not cache then return nil end
         if not cache.BanPoolPickCounts then
             cache.BanPoolPickCounts = {}
@@ -119,5 +129,6 @@ local function create(host, store)
 end
 
 return {
+    buildCacheDeclarations = buildCacheDeclarations,
     create = create,
 }

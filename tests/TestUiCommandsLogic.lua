@@ -100,7 +100,7 @@ function TestUiCommandsLogic:setUp()
     }
     self.commands = dofile("src/mods/ui/ui_commands.lua").create(self.state)
     self.dataRefs, self.values, self.rows = MakeData()
-    self.services = {
+    self.host = {
         logIf = function() end,
     }
 end
@@ -132,11 +132,11 @@ function TestUiCommandsLogic:testResetAllRarityClearsUniqueRarityVars()
 end
 
 function TestUiCommandsLogic:testBanAllAndResetAllBansUseConfiguredMasks()
-    lu.assertTrue(self.commands.BanAllGodBans("Apollo", self.dataRefs, self.services))
+    lu.assertTrue(self.commands.BanAllGodBans("Apollo", self.dataRefs, self.host))
     lu.assertEquals(self.rows[1].Bans, 7)
 
     self.rows[2] = { Bans = 3 }
-    lu.assertTrue(self.commands.ResetAllBans(self.dataRefs, self.services))
+    lu.assertTrue(self.commands.ResetAllBans(self.dataRefs, self.host))
     lu.assertEquals(self.rows[1].Bans, 0)
     lu.assertEquals(self.rows[2].Bans, 0)
 end

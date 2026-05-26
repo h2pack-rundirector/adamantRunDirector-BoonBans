@@ -1,44 +1,66 @@
 local GOD_AVAILABILITY_CACHE = "run-director.god-availability"
-local DEFAULT_AVAILABILITY = {
-    active = false,
-    available = {},
+local GOD_AVAILABILITY_REF = "GodAvailability"
+local GOD_KEYS = {
+    "Aphrodite",
+    "Apollo",
+    "Ares",
+    "Demeter",
+    "Hephaestus",
+    "Hera",
+    "Hestia",
+    "Poseidon",
+    "Zeus",
 }
+local GOD_KEY_SET = {}
+
+for _, godKey in ipairs(GOD_KEYS) do
+    GOD_KEY_SET[godKey] = true
+end
 
 local module = {}
 
-local function readSnapshot(source)
-    return source.cache.shared.read(GOD_AVAILABILITY_CACHE, DEFAULT_AVAILABILITY)
+function module.buildCacheDeclarations()
+    return {
+        [GOD_AVAILABILITY_REF] = {
+            domain = "shared",
+            id = GOD_AVAILABILITY_CACHE,
+            access = "reader",
+            fallback = {
+                active = false,
+                available = {},
+            },
+        },
+    }
 end
 
 function module.create()
     local api = {}
+    api.buildCacheDeclarations = module.buildCacheDeclarations
 
     function api.read(source)
-        return readSnapshot(source)
-    end
-
-    function api.isActive(source)
-        return readSnapshot(source).active == true
+        return source.cache.shared.read(GOD_AVAILABILITY_REF)
     end
 
     function api.isSnapshotActive(snapshot)
         return snapshot and snapshot.active == true
     end
 
-    function api.isAvailable(source, godKey)
-        local snapshot = readSnapshot(source)
-        return api.isSnapshotAvailable(snapshot, godKey)
-    end
-
     function api.isSnapshotAvailable(snapshot, godKey)
-        if snapshot.active ~= true then
+        if not GOD_KEY_SET[godKey] then
             return true
         end
-        local availableByGod = type(snapshot.available) == "table" and snapshot.available or nil
-        if availableByGod and availableByGod[godKey] ~= nil then
-            return availableByGod[godKey] ~= false
+        if not api.isSnapshotActive(snapshot) then
+            return true
         end
-        return true
+        return not snapshot.available or snapshot.available[godKey] ~= false
+    end
+
+    function api.isActive(source)
+        return api.isSnapshotActive(api.read(source))
+    end
+
+    function api.isAvailable(source, godKey)
+        return api.isSnapshotAvailable(api.read(source), godKey)
     end
 
     return api

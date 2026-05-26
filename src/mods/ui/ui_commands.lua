@@ -6,8 +6,8 @@ local uiCommands = {}
 
 local band = bit32.band
 
-local function Log(services, fmt, ...)
-    services.logIf(fmt, ...)
+local function Log(host, fmt, ...)
+    host.logIf(fmt, ...)
 end
 
 function uiCommands.SetConfiguredBanPoolCount(godKey, count, state)
@@ -83,46 +83,46 @@ function uiCommands.ClearFilter(state)
     state.get("BanFilterText"):reset()
 end
 
-function uiCommands.ResetGodBans(banPoolKey, state, services)
+function uiCommands.ResetGodBans(banPoolKey, state, host)
     if godDefs[banPoolKey] then
         local changed = uiCommands.SetBanMask(banPoolKey, 0, state)
         if not changed then
             return false
         end
-        Log(services, "[Micro] Reset bans for %s", banPoolKey)
+        Log(host, "[Micro] Reset bans for %s", banPoolKey)
         return true
     end
     return false
 end
 
-function uiCommands.BanAllGodBans(banPoolKey, state, services)
+function uiCommands.BanAllGodBans(banPoolKey, state, host)
     if godDefs[banPoolKey] then
         local mask = banPools.getBanMask(banPoolKey)
         local changed = uiCommands.SetBanMask(banPoolKey, mask, state)
         if not changed then
             return false
         end
-        Log(services, "[Micro] Banned ALL for %s", banPoolKey)
+        Log(host, "[Micro] Banned ALL for %s", banPoolKey)
         return true
     end
     return false
 end
 
-function uiCommands.ResetAllBans(state, services)
+function uiCommands.ResetAllBans(state, host)
     local changed = false
     for banPoolKey, _ in pairs(godDefs) do
-        if uiCommands.ResetGodBans(banPoolKey, state, services) then
+        if uiCommands.ResetGodBans(banPoolKey, state, host) then
             changed = true
         end
     end
     if changed then
-        Log(services, "[Micro] Global Ban Reset triggered.")
+        Log(host, "[Micro] Global Ban Reset triggered.")
     end
     return changed
 end
 
-function uiCommands.ResetAllControls(state, services)
-    uiCommands.ResetAllBans(state, services)
+function uiCommands.ResetAllControls(state, host)
+    uiCommands.ResetAllBans(state, host)
     uiCommands.ResetAllRarity(state)
 end
 

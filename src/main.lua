@@ -18,6 +18,17 @@ local PACK_ID = "run-director"
 local MODULE_ID = "BoonBans"
 local PLUGIN_GUID = _PLUGIN.guid
 
+local function MergeDeclarations(...)
+    local result = {}
+    for index = 1, select("#", ...) do
+        local source = select(index, ...)
+        for key, declaration in pairs(source or {}) do
+            result[key] = declaration
+        end
+    end
+    return result
+end
+
 local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
@@ -35,24 +46,28 @@ local function init()
         name = "Boon Bans",
         tooltip = "Ban boon offerings and force rarity behavior.",
         storage = data.storage,
+        cache = MergeDeclarations(
+            logic.buildCacheDeclarations(),
+            godAvailability.buildCacheDeclarations()
+        ),
         actions = {
-            clearFilter = function(state)
+            clearFilter = function(_, state)
                 uiCommands.ClearFilter(state)
             end,
-            banAll = function(state, services, banPoolKey)
-                uiCommands.BanAllGodBans(banPoolKey, state, services)
+            banAll = function(host, state, banPoolKey)
+                uiCommands.BanAllGodBans(banPoolKey, state, host)
             end,
-            resetBans = function(state, services, banPoolKey)
-                uiCommands.ResetGodBans(banPoolKey, state, services)
+            resetBans = function(host, state, banPoolKey)
+                uiCommands.ResetGodBans(banPoolKey, state, host)
             end,
-            resetAllBans = function(state, services)
-                uiCommands.ResetAllBans(state, services)
+            resetAllBans = function(host, state)
+                uiCommands.ResetAllBans(state, host)
             end,
-            resetAllRarity = function(state)
+            resetAllRarity = function(_, state)
                 uiCommands.ResetAllRarity(state)
             end,
-            resetAllControls = function(state, services)
-                uiCommands.ResetAllControls(state, services)
+            resetAllControls = function(host, state)
+                uiCommands.ResetAllControls(state, host)
             end,
         },
         drawTab = ui.drawTab,

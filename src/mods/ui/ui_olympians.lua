@@ -59,28 +59,23 @@ local function IsRootCustomized(root, state)
     return false
 end
 
-local function ReadGodAvailabilitySnapshot(services)
-    return godAvailability and godAvailability.read(services) or nil
+local function IsGodPoolFilteringActive(state)
+    return godAvailability and godAvailability.isActive(state) == true
 end
 
-local function IsGodPoolFilteringActive(snapshot)
-    return godAvailability and godAvailability.isSnapshotActive(snapshot) == true
-end
-
-local function IsGodVisibleInGodPool(snapshot, godKey)
+local function IsGodVisibleInGodPool(state, godKey)
     local resolvedGodKey = banConfig.ResolveGodKey(godKey)
-    return not godAvailability or godAvailability.isSnapshotAvailable(snapshot, resolvedGodKey) ~= false
+    return not godAvailability or godAvailability.isAvailable(state, resolvedGodKey) ~= false
 end
 
-local function GetVisibleOlympianRoots(services, state)
-    local godAvailabilitySnapshot = ReadGodAvailabilitySnapshot(services)
-    local godPoolFiltering = IsGodPoolFilteringActive(godAvailabilitySnapshot)
+local function GetVisibleOlympianRoots(state)
+    local godPoolFiltering = IsGodPoolFilteringActive(state)
     for index = #visibleOlympianRoots, 1, -1 do
         visibleOlympianRoots[index] = nil
     end
 
     for _, root in ipairs(GetOlympianRoots(state)) do
-        if not godPoolFiltering or IsGodVisibleInGodPool(godAvailabilitySnapshot, root.id) then
+        if not godPoolFiltering or IsGodVisibleInGodPool(state, root.id) then
             visibleOlympianRoots[#visibleOlympianRoots + 1] = root
         end
     end
@@ -281,10 +276,10 @@ local function TrimOlympianTabs(tabCount)
     end
 end
 
-local function DrawOlympiansTab(draw, state, actions, services)
+local function DrawOlympiansTab(draw, state, actions, _)
     local imgui = draw.imgui
     local activeRootField = state.get(ACTIVE_OLYMPIAN_ROOT_ALIAS)
-    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(services, state)
+    local visibleRoots, godPoolFiltering = GetVisibleOlympianRoots(state)
     if #visibleRoots == 0 then
         draw.widgets.text("No Olympians are currently available.", mutedTextOpts)
         return

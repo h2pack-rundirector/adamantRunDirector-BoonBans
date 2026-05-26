@@ -200,15 +200,12 @@ function TestUiModel.testOlympianRootsAreCachedByConfiguredPoolCount()
         actions = {},
         components = {},
         godAvailability = {
-            read = function()
+            isActive = function()
                 availabilityReadCount = availabilityReadCount + 1
-                return { active = false, available = {} }
+                return false
             end,
-            isSnapshotActive = function(snapshot)
-                return snapshot.active == true
-            end,
-            isSnapshotAvailable = function(snapshot, godKey)
-                return snapshot.available[godKey] ~= false
+            isAvailable = function()
+                return true
             end,
         },
     })
