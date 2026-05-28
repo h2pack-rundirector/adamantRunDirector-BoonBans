@@ -27,49 +27,50 @@ local function init()
     local uiCommands = import("mods/ui/ui_commands.lua").create(data)
     local ui = import("mods/ui.lua").bind(data, uiCommands)
 
-    local host, store = lib.createModule({
+    local module = lib.createModule({
         pluginGuid = PLUGIN_GUID,
         config = config,
         modpack = PACK_ID,
         id = MODULE_ID,
         name = "Boon Bans",
         tooltip = "Ban boon offerings and force rarity behavior.",
-        storage = data.storage,
-        cache = logic.buildCacheDeclarations(),
-        actions = {
-            clearFilter = function(_, state)
-                uiCommands.ClearFilter(state)
-            end,
-            banAll = function(host, state, banPoolKey)
-                uiCommands.BanAllGodBans(banPoolKey, state, host)
-            end,
-            resetBans = function(host, state, banPoolKey)
-                uiCommands.ResetGodBans(banPoolKey, state, host)
-            end,
-            resetAllBans = function(host, state)
-                uiCommands.ResetAllBans(state, host)
-            end,
-            resetAllRarity = function(_, state)
-                uiCommands.ResetAllRarity(state)
-            end,
-            resetAllControls = function(host, state)
-                uiCommands.ResetAllControls(state, host)
-            end,
-        },
-        drawTab = ui.drawTab,
-        drawQuickContent = ui.drawQuickContent,
     })
-    if not host then
+    if not module then
         return
     end
 
-    host.fallbackUi.attachGuiOnce(function(fallbackUi)
+    module.data.define(data.storage)
+    module.cache.define(logic.buildCacheDeclarations())
+    module.actions.define({
+        clearFilter = function(host, uiData)
+            uiCommands.ClearFilter(uiData)
+        end,
+        banAll = function(host, uiData, _, banPoolKey)
+            uiCommands.BanAllGodBans(banPoolKey, uiData, host)
+        end,
+        resetBans = function(host, uiData, _, banPoolKey)
+            uiCommands.ResetGodBans(banPoolKey, uiData, host)
+        end,
+        resetAllBans = function(host, uiData)
+            uiCommands.ResetAllBans(uiData, host)
+        end,
+        resetAllRarity = function(host, uiData)
+            uiCommands.ResetAllRarity(uiData)
+        end,
+        resetAllControls = function(host, uiData)
+            uiCommands.ResetAllControls(uiData, host)
+        end,
+    })
+    module.ui.tab(ui.drawTab)
+    module.ui.quickContent(ui.drawQuickContent)
+
+    module.fallbackUi.attachGuiOnce(function(fallbackUi)
         rom.gui.add_imgui(fallbackUi.renderWindow)
         rom.gui.add_to_menu_bar(fallbackUi.addMenuBar)
     end)
-    godAvailability.registerShared(host)
-    logic.registerHooks(host, store)
-    local ok = host.activate()
+    godAvailability.registerShared(module)
+    logic.registerHooks(module)
+    local ok = module.activate()
     if not ok then
         return
     end

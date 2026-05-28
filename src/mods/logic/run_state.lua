@@ -1,8 +1,21 @@
 local EMPTY_COUNTS = {}
 local RUN_STATE_CACHE = "RunState"
 
-local function ReadStore(store, alias)
-    return store.get(alias):read()
+local function ResolveSource(source)
+    if type(source) == "function" then
+        source = source()
+    end
+    return source
+end
+
+local function GetData(source)
+    source = ResolveSource(source)
+    return source and source.data or source
+end
+
+local function ReadStore(source, alias)
+    local data = GetData(source)
+    return data.get(alias):read()
 end
 
 local function buildCacheDeclarations()
@@ -29,7 +42,8 @@ local function create(store)
     runState.scratch = {}
 
     local function GetCache()
-        local cache = store.cache.currentRun.get(RUN_STATE_CACHE)
+        local source = ResolveSource(store)
+        local cache = source and source.cache and source.cache.currentRun.get(RUN_STATE_CACHE) or nil
         if not cache then return nil end
         if not cache.BanPoolPickCounts then
             cache.BanPoolPickCounts = {}
