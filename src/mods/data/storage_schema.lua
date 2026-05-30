@@ -57,10 +57,12 @@ local function BuildPackedStorageNode(packedStorageBits, item)
         }
     end
 
-    local packedWidth = nil
-    local lastBit = bits[#bits]
-    if lastBit then
-        packedWidth = lastBit.offset + lastBit.width
+    local packedWidth = 0
+    for _, bit in ipairs(bits) do
+        local used = bit.offset + bit.width
+        if used > packedWidth then
+            packedWidth = used
+        end
     end
 
     return {
