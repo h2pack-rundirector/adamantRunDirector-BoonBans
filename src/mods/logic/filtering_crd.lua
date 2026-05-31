@@ -3,12 +3,13 @@
 
 local deps = ...
 local moduleRef = deps.module
+local traitInfo = deps.traitInfo
 
 moduleRef.hooks.wrap("CirceRandomMetaUpgrade", function(host, runtime, base, args)
     if not host.isEnabled() then return base(args) end
     local restores = {}
     local metaState = GameState.MetaUpgradeState or {}
-    local source = runtime.controls.get("CirceCRD")
+    local source = traitInfo.redCitrineDivination(runtime)
     if source ~= nil then
         source:forEachBanned(1, function(name)
             if metaState[name] and not metaState[name].Equipped then

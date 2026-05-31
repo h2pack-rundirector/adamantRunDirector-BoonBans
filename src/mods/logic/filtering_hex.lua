@@ -13,12 +13,9 @@ moduleRef.hooks.wrap("GetEligibleSpells", function(host, runtime, base, screen, 
 
     local allowed = {}
     local banned = {}
-    local configCache = {}
 
     for _, spellName in ipairs(eligible) do
-        local isBanned = traitInfo.isBanned(spellName, runtime, {
-            cache = configCache,
-        })
+        local isBanned = traitInfo.isBanned(spellName, runtime)
 
         if not isBanned then
             t_insert(allowed, spellName)

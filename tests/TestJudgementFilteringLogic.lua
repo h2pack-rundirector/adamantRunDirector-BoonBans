@@ -48,9 +48,15 @@ function TestJudgementFilteringLogic:setUp()
             end,
         },
     }
+    self.traitInfo = {
+        judgement = function(runtime, clearedBiomes)
+            return clearedBiomes == 2 and runtime.controls.get("Judgement2") or nil
+        end,
+    }
 
     assert(loadfile("src/mods/logic/filtering_judgement.lua"))({
         module = self.host,
+        traitInfo = self.traitInfo,
     })
 end
 

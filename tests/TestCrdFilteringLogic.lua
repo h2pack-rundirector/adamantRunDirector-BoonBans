@@ -41,9 +41,15 @@ function TestCrdFilteringLogic:setUp()
             end,
         },
     }
+    self.traitInfo = {
+        redCitrineDivination = function(runtime)
+            return runtime.controls.get("CirceCRD")
+        end,
+    }
 
     assert(loadfile("src/mods/logic/filtering_crd.lua"))({
         module = self.host,
+        traitInfo = self.traitInfo,
     })
 end
 

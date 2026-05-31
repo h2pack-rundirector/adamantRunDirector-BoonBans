@@ -71,19 +71,29 @@ function TestAcquisitionLogic:setUp()
     }
     self.runtime = {}
     self.traitInfo = {
-        controlFromLoot = function(lootKey)
+        lookupLoot = function(lootKey)
             if lootKey == "ZeusUpgrade" then
-                return "Zeus"
+                return {
+                    controlName = "Zeus",
+                    sourceName = "Zeus",
+                    tierKey = "Zeus",
+                    tierIndex = 1,
+                }
             end
             if lootKey == "ApolloUpgrade" then
-                return "Apollo"
+                return {
+                    controlName = "Apollo",
+                    sourceName = "Apollo",
+                    tierKey = "Apollo",
+                    tierIndex = 1,
+                }
             end
             return nil
         end,
         primarySourceName = function(sourceName)
             return sourceName
         end,
-        controlFromTrait = function(traitName)
+        lookupTrait = function(traitName)
             if traitName == "ZeusStrikeBoon" then
                 return {
                     controlName = "Zeus",

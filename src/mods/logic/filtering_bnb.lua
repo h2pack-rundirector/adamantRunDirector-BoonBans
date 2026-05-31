@@ -3,11 +3,12 @@
 
 local deps = ...
 local moduleRef = deps.module
+local traitInfo = deps.traitInfo
 
 moduleRef.hooks.wrap("CirceRemoveShrineUpgrades", function(host, runtime, base, args)
     if not host.isEnabled() then return base(args) end
     local restores = {}
-    local source = runtime.controls.get("CirceBNB")
+    local source = traitInfo.blackNightBanishment(runtime)
     if source ~= nil then
         source:forEachBanned(1, function(name)
             if MetaUpgradeData[name] then

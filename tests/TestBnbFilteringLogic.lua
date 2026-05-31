@@ -39,9 +39,15 @@ function TestBnbFilteringLogic:setUp()
             end,
         },
     }
+    self.traitInfo = {
+        blackNightBanishment = function(runtime)
+            return runtime.controls.get("CirceBNB")
+        end,
+    }
 
     assert(loadfile("src/mods/logic/filtering_bnb.lua"))({
         module = self.host,
+        traitInfo = self.traitInfo,
     })
 end
 

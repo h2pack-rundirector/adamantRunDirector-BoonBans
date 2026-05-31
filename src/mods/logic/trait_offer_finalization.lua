@@ -6,44 +6,28 @@ local runState = deps.runState
 local traitInfo = deps.traitInfo
 local offerContext = deps.offerContext
 
-local function getSourceControl(runtime, sourceName)
-    if not sourceName then
-        return nil
-    end
-
-    return runtime.controls.get(sourceName)
-end
-
-local function getTraitRarityOverride(traitName, runtime, opts)
-    opts = opts or {}
-    local info = traitInfo.controlFromTrait(traitName, {
-        controlName = opts.currentGodKey,
-        tierIndex = opts.banPoolIndex,
-    })
+local function getTraitRarityOverride(traitName, runtime, sourceInfo, tierIndex)
+    local source, info = traitInfo.resolveTrait(runtime, traitName, sourceInfo, tierIndex)
     if not info or not info.controlName then
         return nil
     end
 
-    local source = getSourceControl(runtime, info.controlName)
     if not source or not source:hasRarity() then
         return nil
     end
 
-    local tierIndex = info.tierIndex or 1
-    if not source:isTierConfigured(tierIndex) or source:isBanned(traitName, tierIndex) then
+    local effectiveTierIndex = info.tierIndex or 1
+    if not source:isTierConfigured(effectiveTierIndex) or source:isBanned(traitName, effectiveTierIndex) then
         return nil
     end
 
     return source:rarityOverride(traitName)
 end
 
-local function applyRarityOverrides(lootData, runtime, currentGodKey, banPoolIndex, host)
+local function applyRarityOverrides(lootData, runtime, lootInfo, banPoolIndex, host)
     for _, item in ipairs(lootData.UpgradeOptions) do
         local name = item.ItemName or item.Name
-        local targetRarity = getTraitRarityOverride(name, runtime, {
-            currentGodKey = currentGodKey,
-            banPoolIndex = banPoolIndex,
-        })
+        local targetRarity = getTraitRarityOverride(name, runtime, lootInfo, banPoolIndex)
         if targetRarity then
             item.Rarity = targetRarity
             item.ForceRarity = true
@@ -65,10 +49,10 @@ moduleRef.hooks.wrap("SetTraitsOnLoot", function(host, runtime, base, lootData, 
         return
     end
 
-    local currentGodKey = traitInfo.controlFromLoot(lootData.Name)
-    local banPoolIndex = runState.getBanPoolIndex(runtime, currentGodKey)
+    local lootInfo = traitInfo.lookupLoot(lootData.Name)
+    local banPoolIndex = traitInfo.currentTierIndex(runtime, lootInfo)
 
-    applyRarityOverrides(lootData, runtime, currentGodKey, banPoolIndex, host)
+    applyRarityOverrides(lootData, runtime, lootInfo, banPoolIndex, host)
 
     if #allowed <= 2 and #allowed > 0 then
         local duoRarityMap = {}

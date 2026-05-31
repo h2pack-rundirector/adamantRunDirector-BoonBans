@@ -37,6 +37,34 @@ local function MakeGodDefs()
             maxBanPools = 1,
             showPackedValueColors = false,
         },
+        HadesKeepsake = {
+            key = "HadesKeepsake",
+            displayTextKey = "Jeweled Pom",
+            colorKey = "HadesVoice",
+            banPoolGroupKey = "HadesKeepsake",
+            banPoolIndex = 1,
+        },
+        CirceBNB = {
+            key = "CirceBNB",
+            displayTextKey = "Black Night Banishment",
+            colorKey = "CirceVoice",
+            banPoolGroupKey = "CirceBNB",
+            banPoolIndex = 1,
+        },
+        CirceCRD = {
+            key = "CirceCRD",
+            displayTextKey = "Red Citrine Divination",
+            colorKey = "CirceVoice",
+            banPoolGroupKey = "CirceCRD",
+            banPoolIndex = 1,
+        },
+        Judgement2 = {
+            key = "Judgement2",
+            displayTextKey = "Second Biome Judgement",
+            colorKey = "HadesVoice",
+            banPoolGroupKey = "Judgement2",
+            banPoolIndex = 1,
+        },
     }
 end
 
@@ -160,18 +188,49 @@ function TestDataLogic.testCatalogDuplicatesEntriesAndSourceResolverResolvesSour
         { god = "Apollo2", bit = 0, mask = 1 },
     })
     lu.assertEquals(catalog.entries.Apollo2.boons[1].God, "Apollo2")
-    lu.assertEquals(sourceResolver.fromLootName("ApolloUpgrade"), "Apollo")
-    lu.assertEquals(sourceResolver.fromLootName("WeaponUpgrade"), "Staff")
+    lu.assertEquals(sourceResolver.infoFromLoot("ApolloUpgrade"), {
+        controlName = "Apollo",
+        sourceName = "Apollo",
+        tierKey = "Apollo",
+        tierIndex = 1,
+    })
+    lu.assertEquals(sourceResolver.infoFromLoot("WeaponUpgrade"), {
+        controlName = "Staff",
+        sourceName = "Staff",
+        tierKey = "Staff",
+        tierIndex = 1,
+    })
     lu.assertEquals(sourceResolver.primarySourceName("Apollo2"), "Apollo")
     lu.assertEquals(sourceResolver.primarySourceName("Unknown"), "Unknown")
-    lu.assertEquals(sourceResolver.fromTraitName("Strike", {
-        controlName = "Apollo",
-        tierIndex = 2,
-    }), {
+    lu.assertEquals(sourceResolver.infoFromTrait("Strike", "Apollo", 2), {
         controlName = "Apollo",
         sourceName = "Apollo",
         tierKey = "Apollo2",
         tierIndex = 2,
         traitName = "Strike",
+    })
+    lu.assertEquals(sourceResolver.specialSource("blackNightBanishment"), {
+        controlName = "CirceBNB",
+        sourceName = "CirceBNB",
+        tierKey = "CirceBNB",
+        tierIndex = 1,
+    })
+    lu.assertEquals(sourceResolver.specialSource("hadesKeepsake"), {
+        controlName = "HadesKeepsake",
+        sourceName = "HadesKeepsake",
+        tierKey = "HadesKeepsake",
+        tierIndex = 1,
+    })
+    lu.assertEquals(sourceResolver.specialSource("redCitrineDivination"), {
+        controlName = "CirceCRD",
+        sourceName = "CirceCRD",
+        tierKey = "CirceCRD",
+        tierIndex = 1,
+    })
+    lu.assertEquals(sourceResolver.judgementSource(2), {
+        controlName = "Judgement2",
+        sourceName = "Judgement2",
+        tierKey = "Judgement2",
+        tierIndex = 1,
     })
 end

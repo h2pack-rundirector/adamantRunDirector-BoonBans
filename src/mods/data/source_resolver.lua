@@ -2,6 +2,18 @@
 
 local sourceResolverModule = {}
 
+local SPECIAL_SOURCES = {
+    blackNightBanishment = "CirceBNB",
+    hadesKeepsake = "HadesKeepsake",
+    redCitrineDivination = "CirceCRD",
+}
+
+local JUDGEMENT_SOURCES = {
+    [1] = "Judgement1",
+    [2] = "Judgement2",
+    [3] = "Judgement3",
+}
+
 local function getSourceName(godDefs, sourceKey)
     local def = godDefs and godDefs[sourceKey] or nil
     return def and def.banPoolGroupKey or sourceKey
@@ -75,6 +87,34 @@ local function buildTraitIndex(godDefs, catalog)
     return traitIndex
 end
 
+local function sourceInfo(godDefs, sourceKey)
+    if not sourceKey then
+        return nil
+    end
+
+    local controlName = getSourceName(godDefs, sourceKey)
+    return {
+        controlName = controlName,
+        sourceName = controlName,
+        tierKey = sourceKey,
+        tierIndex = getTierIndex(godDefs, sourceKey),
+    }
+end
+
+local function buildSpecialSourceIndex(godDefs)
+    local specialSources = {}
+    local judgementSources = {}
+
+    for sourceRole, sourceKey in pairs(SPECIAL_SOURCES) do
+        specialSources[sourceRole] = sourceInfo(godDefs, sourceKey)
+    end
+    for sourceRoleIndex, sourceKey in pairs(JUDGEMENT_SOURCES) do
+        judgementSources[sourceRoleIndex] = sourceInfo(godDefs, sourceKey)
+    end
+
+    return specialSources, judgementSources
+end
+
 local function equippedWeaponName()
     if type(GetEquippedWeapon) == "function" then
         return tostring(GetEquippedWeapon() or "")
@@ -86,6 +126,7 @@ function sourceResolverModule.create(godDefs, catalog)
     local sourceResolver = {}
     local lootSources, weaponSources = buildLootSourceIndex(godDefs)
     local traitIndex = buildTraitIndex(godDefs, catalog)
+    local specialSources, judgementSources = buildSpecialSourceIndex(godDefs)
 
     local function primarySourceName(sourceName)
         local def = godDefs and godDefs[sourceName] or nil
@@ -99,33 +140,33 @@ function sourceResolverModule.create(godDefs, catalog)
         return primarySourceName(sourceName)
     end
 
-    function sourceResolver.fromLootName(lootName)
+    function sourceResolver.infoFromLoot(lootName)
         if type(lootName) ~= "string" or lootName == "" then
             return nil
         end
 
+        local sourceName
         if lootName == "WeaponUpgrade" then
             local currentWeapon = equippedWeaponName()
-            for _, sourceName in ipairs(weaponSources) do
-                if currentWeapon:find(sourceName, 1, true) then
-                    return sourceName
+            for _, weaponSourceName in ipairs(weaponSources) do
+                if currentWeapon:find(weaponSourceName, 1, true) then
+                    return sourceInfo(godDefs, weaponSourceName)
                 end
             end
             return nil
         end
 
-        return lootSources[lootName]
+        sourceName = lootSources[lootName]
+        return sourceInfo(godDefs, sourceName)
     end
 
-    function sourceResolver.fromTraitName(traitName, opts)
-        opts = opts or {}
+    function sourceResolver.infoFromTrait(traitName, controlName, tierIndex)
         local list = traitIndex[traitName]
         if not list then
             return nil
         end
 
-        local controlName = opts.controlName or opts.sourceName or opts.filterGodKey
-        local requestedTierIndex = opts.tierIndex or opts.banPoolIndex
+        local requestedTierIndex = tierIndex
         if requestedTierIndex ~= nil then
             requestedTierIndex = math.floor(tonumber(requestedTierIndex) or 1)
         end
@@ -138,6 +179,18 @@ function sourceResolverModule.create(godDefs, catalog)
         end
 
         return nil
+    end
+
+    function sourceResolver.specialSource(sourceRole)
+        return specialSources[sourceRole]
+    end
+
+    function sourceResolver.judgementSource(clearedBiomes)
+        local index = math.min(math.floor(tonumber(clearedBiomes) or 0), 3)
+        if index < 1 then
+            return nil
+        end
+        return judgementSources[index]
     end
 
     return sourceResolver

@@ -55,42 +55,45 @@ function TestTraitOfferFilteringLogic:setUp()
         end,
     }
     self.traitInfo = {
-        controlFromLoot = function(lootName)
-            return lootName == "ApolloUpgrade" and "Apollo" or nil
+        resolveLoot = function(runtime, lootName)
+            if lootName ~= "ApolloUpgrade" then
+                return nil, nil
+            end
+            return runtime.controls.get("Apollo"), {
+                controlName = "Apollo",
+                tierKey = "Apollo",
+                tierIndex = 1,
+            }
         end,
-        currentControlFromTrait = function(traitName)
-            local query = {}
+        resolveCurrentTrait = function(runtime, traitName)
             if traitName == "Blocked" then
-                query.controlName = "Apollo"
-                query.tierIndex = 1
-            end
-            if traitName == "AshenGift" then
-                query.controlName = "Hades"
-                query.tierIndex = 1
-            end
-            query = query or {}
-            if traitName == "Blocked"
-                and (query.controlName == nil or query.controlName == "Apollo")
-                and (query.tierIndex == nil or query.tierIndex == 1) then
-                return {
+                local info = {
                     controlName = "Apollo",
                     tierKey = "Apollo",
                     tierIndex = 1,
                     traitName = traitName,
                 }
+                return runtime.controls.get("Apollo"), info
             end
             if traitName == "AshenGift" then
-                return {
+                local info = {
                     controlName = "Hades",
                     tierKey = "Hades",
                     tierIndex = 1,
                     traitName = traitName,
                 }
+                return nil, info
             end
-            return nil
+            return nil, nil
+        end,
+        currentTierIndex = function()
+            return 1
         end,
         isBanned = function(name)
             return name == "Banned"
+        end,
+        hadesKeepsake = function(runtime)
+            return runtime.controls.get("HadesKeepsake")
         end,
     }
     self.sources = {

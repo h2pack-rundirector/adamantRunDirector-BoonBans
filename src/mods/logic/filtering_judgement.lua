@@ -3,6 +3,7 @@
 
 local deps = ...
 local moduleRef = deps.module
+local traitInfo = deps.traitInfo
 
 moduleRef.hooks.wrap("AddRandomMetaUpgrades", function(host, runtime, base, numCards, args)
     if not host.isEnabled() then return base(numCards, args) end
@@ -11,8 +12,7 @@ moduleRef.hooks.wrap("AddRandomMetaUpgrades", function(host, runtime, base, numC
     local restores = {}
     local metaState = GameState.MetaUpgradeState or {}
     local currentBiome = CurrentRun.ClearedBiomes or 0
-    local judgementKey = "Judgement" .. tostring(math.min(currentBiome, 3))
-    local source = runtime.controls.get(judgementKey)
+    local source = traitInfo.judgement(runtime, currentBiome)
     if source ~= nil then
         source:forEachBanned(1, function(name)
             if metaState[name] and not metaState[name].Equipped then

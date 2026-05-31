@@ -45,22 +45,33 @@ function TestTraitOfferFinalizationLogic:setUp()
         end,
     }
     self.traitInfo = {
-        controlFromLoot = function(lootName)
-            return lootName == "ApolloUpgrade" and "Apollo" or nil
-        end,
-        controlFromTrait = function(traitName, query)
-            query = query or {}
-            if traitName == "Allowed"
-                and (query.controlName == nil or query.controlName == "Apollo")
-                and (query.tierIndex == nil or query.tierIndex == 1) then
+        lookupLoot = function(lootName)
+            if lootName == "ApolloUpgrade" then
                 return {
+                    controlName = "Apollo",
+                    sourceName = "Apollo",
+                    tierKey = "Apollo",
+                    tierIndex = 1,
+                }
+            end
+            return nil
+        end,
+        currentTierIndex = function()
+            return 1
+        end,
+        resolveTrait = function(runtime, traitName, sourceInfo, tierIndex)
+            local controlName = sourceInfo and sourceInfo.controlName or nil
+            if traitName == "Allowed"
+                and (controlName == nil or controlName == "Apollo")
+                and (tierIndex == nil or tierIndex == 1) then
+                return runtime.controls.get("Apollo"), {
                     controlName = "Apollo",
                     tierKey = "Apollo",
                     tierIndex = 1,
                     traitName = traitName,
                 }
             end
-            return nil
+            return nil, nil
         end,
     }
     self.runtime = {

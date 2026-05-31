@@ -9,31 +9,18 @@ local offerContext = deps.offerContext
 
 local skipIsTraitEligible = false
 
-local function getSourceControl(runtime, sourceName)
-    if not sourceName then
-        return nil
-    end
-
-    return runtime.controls.get(sourceName)
-end
-
-local function resolveTraitInfo(traitName, runtime)
-    return traitInfo.currentControlFromTrait(traitName, runtime)
-end
-
 local function shouldBlockTraitEligibility(traitName, runtime, opts)
     opts = opts or {}
-    local info = resolveTraitInfo(traitName, runtime)
+    local source, info = traitInfo.resolveCurrentTrait(runtime, traitName)
     if not info then
         return false
     end
 
     if opts.isKeepsakeOffering and info.tierKey == "Hades" then
-        local keepsake = getSourceControl(runtime, "HadesKeepsake")
+        local keepsake = traitInfo.hadesKeepsake(runtime)
         return keepsake ~= nil and keepsake:isBanned(traitName, 1) == true
     end
 
-    local source = getSourceControl(runtime, info.controlName)
     local tierIndex = info.tierIndex or 1
     if not source or not source:isTierConfigured(tierIndex) then
         return false
@@ -85,21 +72,21 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
         return base(upgradeOptions, lootData, upgradeChoiceData)
     end
 
-    local currentGodKey = traitInfo.controlFromLoot(lootData.Name)
+    local source, lootInfo = traitInfo.resolveLoot(runtime, lootData.Name)
+    local sourceName = lootInfo and lootInfo.sourceName or nil
     local isHammer = (lootData.Name == "WeaponUpgrade")
-    local banPoolIndex = runState.getBanPoolIndex(runtime, currentGodKey)
+    local banPoolIndex = traitInfo.currentTierIndex(runtime, lootInfo)
 
     host.logIf(
         "[Micro] Inspecting Loot: %s (God: %s, Ban Pool: %d)",
         lootData.Name,
-        tostring(currentGodKey),
+        tostring(sourceName),
         banPoolIndex
     )
 
-    if currentGodKey then
-        local source = getSourceControl(runtime, currentGodKey)
+    if lootInfo then
         if not source or not source:isTierConfigured(banPoolIndex) then
-            host.logIf("[Micro] Early exit for %s (ban pool %d not configured)", tostring(currentGodKey), banPoolIndex)
+            host.logIf("[Micro] Early exit for %s (ban pool %d not configured)", tostring(sourceName), banPoolIndex)
             return getVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
         end
     end
@@ -108,16 +95,11 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
 
     local allowed = {}
     local banned = {}
-    local configCache = {}
 
     for _, option in ipairs(fullList) do
         local name = option and (option.ItemName or option.Name or option.TraitName)
         if name then
-            local isBanned = traitInfo.isBanned(name, runtime, {
-                filterGodKey = currentGodKey,
-                banPoolIndex = banPoolIndex,
-                cache = configCache,
-            })
+            local isBanned = traitInfo.isBanned(name, runtime, lootInfo, banPoolIndex)
 
             if not isBanned then
                 table.insert(allowed, option)

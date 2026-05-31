@@ -18,7 +18,8 @@ local function PrimarySourceNameFromLoot(sourceName)
         return nil
     end
 
-    local godKey = traitInfo.controlFromLoot(sourceName)
+    local info = traitInfo.lookupLoot(sourceName)
+    local godKey = info and info.controlName or nil
     if not godKey then
         return nil
     end
@@ -56,7 +57,7 @@ local function ResolveAcquiredGodKey(args, traitData, acquiredTrait)
     end
 
     if traitName and not IsDuoTraitName(traitName) then
-        local info = traitInfo.controlFromTrait(traitName)
+        local info = traitInfo.lookupTrait(traitName)
         if info then
             return info.controlName, "source-resolver"
         end
@@ -108,7 +109,8 @@ end)
 moduleRef.hooks.wrap("OpenUpgradeChoiceMenu", function(host, _, base, source, args)
     runState.scratch.clear(OFFER_SOURCES)
     if host.isEnabled() and source and source.Name then
-        runState.scratch.set(ACTIVE_GOD, traitInfo.controlFromLoot(source.Name))
+        local info = traitInfo.lookupLoot(source.Name)
+        runState.scratch.set(ACTIVE_GOD, info and info.controlName or nil)
     end
     base(source, args)
 end)

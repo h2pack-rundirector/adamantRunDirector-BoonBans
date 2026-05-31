@@ -3,75 +3,105 @@ local sourceResolver = deps.sourceResolver
 local runState = deps.runState
 
 local traitInfo = {}
+local controlCache = {}
 
-local function getSourceControl(runtime, controlName, cache)
-    if not controlName then
-        return nil
+local function resolveInfo(runtime, info)
+    if not info then
+        return nil, nil
     end
-    if cache and cache[controlName] ~= nil then
-        return cache[controlName]
+
+    local controlName = info.controlName
+    if not controlName then
+        return nil, info
+    end
+    if controlCache[controlName] ~= nil then
+        return controlCache[controlName], info
     end
 
     local source = runtime.controls.get(controlName)
-    if cache then
-        cache[controlName] = source
+    if source then
+        controlCache[controlName] = source
     end
-    return source
+    return source, info
 end
 
-function traitInfo.controlFromLoot(lootName)
-    return sourceResolver.fromLootName(lootName)
+function traitInfo.lookupLoot(lootName)
+    return sourceResolver.infoFromLoot(lootName)
+end
+
+function traitInfo.lookupTrait(traitName)
+    return sourceResolver.infoFromTrait(traitName)
+end
+
+function traitInfo.resolveLoot(runtime, lootName)
+    return resolveInfo(runtime, traitInfo.lookupLoot(lootName))
 end
 
 function traitInfo.primarySourceName(sourceName)
     return sourceResolver.primarySourceName(sourceName)
 end
 
-function traitInfo.controlFromTrait(traitName, opts)
-    opts = opts or {}
-    return sourceResolver.fromTraitName(traitName, {
-        controlName = opts.controlName or opts.sourceName or opts.filterGodKey,
-        tierIndex = opts.tierIndex or opts.banPoolIndex,
-    })
+local function lookupTraitInSource(traitName, sourceInfo, tierIndex)
+    local controlName = sourceInfo and sourceInfo.controlName or nil
+    return sourceResolver.infoFromTrait(traitName, controlName, tierIndex)
 end
 
-function traitInfo.currentControlFromTrait(traitName, runtime, opts)
-    opts = opts or {}
-    local info = traitInfo.controlFromTrait(traitName, {
-        controlName = opts.controlName or opts.filterGodKey,
-        tierIndex = opts.tierIndex or opts.banPoolIndex,
-    })
-    if not info or opts.banPoolIndex or opts.tierIndex or not runtime then
-        return info
+function traitInfo.currentTierIndex(runtime, sourceInfo)
+    local controlName = sourceInfo and sourceInfo.controlName or nil
+    return runState.getBanPoolIndex(runtime, controlName)
+end
+
+function traitInfo.resolveTrait(runtime, traitName, sourceInfo, tierIndex)
+    return resolveInfo(runtime, lookupTraitInSource(traitName, sourceInfo, tierIndex))
+end
+
+function traitInfo.resolveCurrentTrait(runtime, traitName)
+    local info = traitInfo.lookupTrait(traitName)
+    if not info or not runtime then
+        return resolveInfo(runtime, info)
     end
 
-    local currentTierIndex = runState.getBanPoolIndex(runtime, info.controlName)
+    local currentTierIndex = traitInfo.currentTierIndex(runtime, info)
     if not currentTierIndex then
-        return info
+        return resolveInfo(runtime, info)
     end
 
-    return traitInfo.controlFromTrait(traitName, {
-        controlName = info.controlName,
-        tierIndex = currentTierIndex,
-    }) or info
+    local currentInfo = lookupTraitInSource(traitName, info, currentTierIndex) or info
+    return resolveInfo(runtime, currentInfo)
 end
 
-function traitInfo.isBanned(traitName, runtime, opts)
-    opts = opts or {}
-    local info = traitInfo.currentControlFromTrait(traitName, runtime, {
-        controlName = opts.controlName or opts.filterGodKey,
-        tierIndex = opts.tierIndex or opts.banPoolIndex,
-    })
+function traitInfo.isBanned(traitName, runtime, sourceInfo, tierIndex)
+    local source, info
+    if sourceInfo then
+        source, info = traitInfo.resolveTrait(runtime, traitName, sourceInfo, tierIndex)
+    else
+        source, info = traitInfo.resolveCurrentTrait(runtime, traitName)
+    end
     if not info then
         return false, nil
     end
 
-    local source = getSourceControl(runtime, info.controlName, opts.cache)
     if not source then
         return false, info
     end
 
     return source:isBanned(traitName, info.tierIndex or 1) == true, info
+end
+
+function traitInfo.blackNightBanishment(runtime)
+    return resolveInfo(runtime, sourceResolver.specialSource("blackNightBanishment"))
+end
+
+function traitInfo.hadesKeepsake(runtime)
+    return resolveInfo(runtime, sourceResolver.specialSource("hadesKeepsake"))
+end
+
+function traitInfo.redCitrineDivination(runtime)
+    return resolveInfo(runtime, sourceResolver.specialSource("redCitrineDivination"))
+end
+
+function traitInfo.judgement(runtime, clearedBiomes)
+    return resolveInfo(runtime, sourceResolver.judgementSource(clearedBiomes))
 end
 
 return traitInfo

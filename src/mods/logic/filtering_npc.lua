@@ -12,13 +12,10 @@ local function wrapNPCChoice(funcName)
         if host.isEnabled() and args.UpgradeOptions then
             local allowed = {}
             local banned = {}
-            local configCache = {}
 
             for _, option in ipairs(args.UpgradeOptions) do
                 if option.GameStateRequirements == nil or IsGameStateEligible(source, option.GameStateRequirements) then
-                    local isBanned = traitInfo.isBanned(option.ItemName, runtime, {
-                        cache = configCache,
-                    })
+                    local isBanned = traitInfo.isBanned(option.ItemName, runtime)
 
                     if not isBanned then
                         t_insert(allowed, option)
