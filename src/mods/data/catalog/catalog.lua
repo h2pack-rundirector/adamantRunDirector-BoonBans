@@ -37,13 +37,6 @@ function catalogModule.buildBase(godDefs)
     return baseCatalog
 end
 
-local function ResolveGodKey(godDefs, key)
-    local def = godDefs[key]
-    if not def then return key end
-    if def.duplicateOf then return ResolveGodKey(godDefs, def.duplicateOf) end
-    return key
-end
-
 function catalogModule.build(godDefs, baseCatalog)
     local catalog = {
         base = baseCatalog,
@@ -100,35 +93,6 @@ function catalogModule.build(godDefs, baseCatalog)
                 end
             end
         end
-    end
-
-    function catalog.getEntry(godKey)
-        return catalog.entries[godKey]
-    end
-
-    function catalog.getBoons(godKey)
-        local entry = catalog.entries[godKey]
-        return entry and entry.boons or nil
-    end
-
-    function catalog.findTraitEntries(traitName)
-        return catalog.traitLookup[traitName]
-    end
-
-    function catalog.getGodFromLootsource(lootKey)
-        for godKey, def in pairs(godDefs) do
-            if def.lootSource and def.lootSource.key == lootKey then
-                if lootKey == "WeaponUpgrade" then
-                    local currentWeapon = GetEquippedWeapon()
-                    if string.find(currentWeapon, godKey, 1, true) then
-                        return ResolveGodKey(godDefs, godKey)
-                    end
-                else
-                    return ResolveGodKey(godDefs, godKey)
-                end
-            end
-        end
-        return nil
     end
 
     return catalog

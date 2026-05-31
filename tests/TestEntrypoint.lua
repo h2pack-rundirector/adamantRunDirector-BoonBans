@@ -1,3 +1,6 @@
+-- luacheck: globals TestEntrypoint
+-- luacheck: no unused args
+
 local lu = require("luaunit")
 local harness = dofile("../../Setup/tests/module_entrypoint_harness.lua")
 

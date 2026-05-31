@@ -21,11 +21,10 @@ local PLUGIN_GUID = _PLUGIN.guid
 local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
-    local godAvailability = import("mods/cache/god_availability.lua").create()
-    data.godAvailability = godAvailability
-    local logic = import("mods/logic.lua").bind(data)
-    local uiCommands = import("mods/ui/ui_commands.lua").create(data)
-    local ui = import("mods/ui.lua").bind(data, uiCommands)
+    local godAvailability = import("mods/cache/god_availability.lua")
+    local actions = import("mods/actions.lua").create(data)
+    local logic = import("mods/logic.lua", nil, data)
+    local ui = import("mods/ui.lua")
 
     local module = lib.createModule({
         pluginGuid = PLUGIN_GUID,
@@ -40,27 +39,10 @@ local function init()
     end
 
     module.data.define(data.storage)
+    module.controls.defineTemplates(data.controlTemplates)
+    module.controls.define(data.controls)
     module.cache.define(logic.buildCacheDeclarations())
-    module.actions.define({
-        clearFilter = function(host, uiData)
-            uiCommands.ClearFilter(uiData)
-        end,
-        banAll = function(host, uiData, _, banPoolKey)
-            uiCommands.BanAllGodBans(banPoolKey, uiData, host)
-        end,
-        resetBans = function(host, uiData, _, banPoolKey)
-            uiCommands.ResetGodBans(banPoolKey, uiData, host)
-        end,
-        resetAllBans = function(host, uiData)
-            uiCommands.ResetAllBans(uiData, host)
-        end,
-        resetAllRarity = function(host, uiData)
-            uiCommands.ResetAllRarity(uiData)
-        end,
-        resetAllControls = function(host, uiData)
-            uiCommands.ResetAllControls(uiData, host)
-        end,
-    })
+    module.actions.define(actions)
     module.ui.tab(ui.drawTab)
     module.ui.quickContent(ui.drawQuickContent)
 

@@ -1,6 +1,9 @@
 ---@meta _
 ---@diagnostic disable: lowercase-global
-local banConfig = nil
+local deps = ...
+local moduleRef = deps.module
+local runState = deps.runState
+local traitInfo = deps.traitInfo
 
 local ACTIVE_GOD = "activeGod"
 local OFFER_SOURCES = "offerSources"
@@ -10,17 +13,17 @@ local function IsDuoTraitName(traitName)
     return traitData and traitData.IsDuoBoon == true
 end
 
-local function ResolveGodKeyFromSourceName(sourceName, banResolver)
+local function PrimarySourceNameFromLoot(sourceName)
     if type(sourceName) ~= "string" or sourceName == "" then
         return nil
     end
 
-    local godKey = banResolver.getGodFromLootsource(sourceName)
+    local godKey = traitInfo.controlFromLoot(sourceName)
     if not godKey then
         return nil
     end
 
-    return banConfig.ResolveGodKey(godKey)
+    return traitInfo.primarySourceName(godKey)
 end
 
 local function GetAcquiredTraitName(args, traitData, acquiredTrait)
@@ -33,29 +36,29 @@ local function GetAcquiredTraitName(args, traitData, acquiredTrait)
     return args and args.TraitName or nil
 end
 
-local function ResolveAcquiredGodKey(args, traitData, acquiredTrait, runState, banResolver)
+local function ResolveAcquiredGodKey(args, traitData, acquiredTrait)
     local traitName = GetAcquiredTraitName(args, traitData, acquiredTrait)
 
     local rememberedSourceName = runState and runState.scratch.mapGet(OFFER_SOURCES, traitName) or nil
-    local rememberedGodKey = ResolveGodKeyFromSourceName(rememberedSourceName, banResolver)
+    local rememberedGodKey = PrimarySourceNameFromLoot(rememberedSourceName)
     if rememberedGodKey then
         return rememberedGodKey, "remembered-source"
     end
 
-    local argsGodKey = ResolveGodKeyFromSourceName(args and args.SourceName or nil, banResolver)
+    local argsGodKey = PrimarySourceNameFromLoot(args and args.SourceName or nil)
     if argsGodKey then
         return argsGodKey, "args-source"
     end
 
     local activeGodKey = runState and runState.scratch.get(ACTIVE_GOD) or nil
     if activeGodKey then
-        return banConfig.ResolveGodKey(activeGodKey), "active-god"
+        return traitInfo.primarySourceName(activeGodKey), "active-god"
     end
 
     if traitName and not IsDuoTraitName(traitName) then
-        local godKey = banResolver.getTraitGodKey(traitName)
-        if godKey then
-            return godKey, "catalog"
+        local info = traitInfo.controlFromTrait(traitName)
+        if info then
+            return info.controlName, "source-resolver"
         end
     end
 
@@ -87,65 +90,56 @@ local function ShouldAdvanceBanPool(args, traitData, acquiredTrait, godKey)
     return true, "counted"
 end
 
-local module = {}
+moduleRef.hooks.wrap("CreateUpgradeChoiceButton", "live-boon-offer-source", function(
+    runtimeHost, _, base, screen, lootData, itemIndex, itemData, args
+)
+    local button = base(screen, lootData, itemIndex, itemData, args)
 
-function module.bind(data)
-    banConfig = data.banConfig
-    return module
-end
+    if runtimeHost.isEnabled()
+        and button and button.Data
+        and lootData and lootData.Name
+        and IsDuoTraitName(button.Data.Name) then
+        runState.scratch.mapSet(OFFER_SOURCES, button.Data.Name, lootData.Name)
+    end
 
-function module.registerHooks(host, runState, banResolver)
-    host.hooks.wrap("CreateUpgradeChoiceButton", "live-boon-offer-source", function(base, screen, lootData, itemIndex, itemData, args)
-        local button = base(screen, lootData, itemIndex, itemData, args)
+    return button
+end)
 
-        if host.isEnabled()
-            and button and button.Data
-            and lootData and lootData.Name
-            and IsDuoTraitName(button.Data.Name) then
-            runState.scratch.mapSet(OFFER_SOURCES, button.Data.Name, lootData.Name)
+moduleRef.hooks.wrap("OpenUpgradeChoiceMenu", function(host, _, base, source, args)
+    runState.scratch.clear(OFFER_SOURCES)
+    if host.isEnabled() and source and source.Name then
+        runState.scratch.set(ACTIVE_GOD, traitInfo.controlFromLoot(source.Name))
+    end
+    base(source, args)
+end)
+
+moduleRef.hooks.wrap("AddTraitToHero", function(host, runtime, base, args)
+    local result = base(args)
+    local traitData = args and args.TraitData or result
+
+    if host.isEnabled() and runState.hasCurrentRun(runtime) and traitData then
+        local traitName = GetAcquiredTraitName(args, traitData, result)
+        local godKey, sourceMode = ResolveAcquiredGodKey(args, traitData, result)
+        local shouldAdvance, advanceMode = ShouldAdvanceBanPool(args, traitData, result, godKey)
+
+        host.logIf(
+            "[Micro] AddTraitToHero: trait=%s god=%s source=%s progression=%s",
+            tostring(traitName),
+            tostring(godKey),
+            tostring(sourceMode),
+            tostring(advanceMode)
+        )
+
+        if shouldAdvance then
+            local newCount = runState.recordAcquisition(runtime, godKey)
+            host.logIf("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
+                newCount or 0)
         end
+        runState.scratch.clear(ACTIVE_GOD)
 
-        return button
-    end)
-
-    host.hooks.wrap("OpenUpgradeChoiceMenu", function(base, source, args)
-        runState.scratch.clear(OFFER_SOURCES)
-        if host.isEnabled() and source and source.Name then
-            runState.scratch.set(ACTIVE_GOD, banResolver.getGodFromLootsource(source.Name))
+        if shouldAdvance then
+            runState.consumeForcedRarity(runtime, traitName)
         end
-        base(source, args)
-    end)
-
-    host.hooks.wrap("AddTraitToHero", function(base, args)
-        local result = base(args)
-        local traitData = args and args.TraitData or result
-
-        if host.isEnabled() and runState.hasCurrentRun() and traitData then
-            local traitName = GetAcquiredTraitName(args, traitData, result)
-            local godKey, sourceMode = ResolveAcquiredGodKey(args, traitData, result, runState, banResolver)
-            local shouldAdvance, advanceMode = ShouldAdvanceBanPool(args, traitData, result, godKey)
-
-            host.logIf(
-                "[Micro] AddTraitToHero: trait=%s god=%s source=%s progression=%s",
-                tostring(traitName),
-                tostring(godKey),
-                tostring(sourceMode),
-                tostring(advanceMode)
-            )
-
-            if shouldAdvance then
-                local newCount = runState.recordAcquisition(godKey)
-                host.logIf("[Micro] AddTraitToHero: %s. God: %s. New Count: %d", tostring(traitName), tostring(godKey),
-                    newCount or 0)
-            end
-            runState.scratch.clear(ACTIVE_GOD)
-
-            if shouldAdvance then
-                runState.consumeForcedRarity(traitName)
-            end
-        end
-        return result
-    end)
-end
-
-return module
+    end
+    return result
+end)

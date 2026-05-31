@@ -4,34 +4,35 @@ local lu = require("luaunit")
 
 TestRunStateLogic = {}
 
-local function MakeStore(values)
+local function MakeRuntime(values)
     values = values or {}
-    local store = {
-        get = function(key)
-            return {
-                read = function()
-                    return values[key]
-                end,
-            }
-        end,
-    }
-    store.cache = {
-        currentRun = {
+    return {
+        data = {
             get = function(key)
-                if not CurrentRun then
-                    return nil
-                end
-                CurrentRun.__testCache = CurrentRun.__testCache or {}
-                if CurrentRun.__testCache[key] == nil then
-                    CurrentRun.__testCache[key] = {
-                        BanPoolPickCounts = {},
-                    }
-                end
-                return CurrentRun.__testCache[key]
+                return {
+                    read = function()
+                        return values[key]
+                    end,
+                }
             end,
         },
+        cache = {
+            currentRun = {
+                get = function(key)
+                    if not CurrentRun then
+                        return nil
+                    end
+                    CurrentRun.__testCache = CurrentRun.__testCache or {}
+                    if CurrentRun.__testCache[key] == nil then
+                        CurrentRun.__testCache[key] = {
+                            BanPoolPickCounts = {},
+                        }
+                    end
+                    return CurrentRun.__testCache[key]
+                end,
+            },
+        },
     }
-    return store
 end
 
 function TestRunStateLogic:setUp()
@@ -43,7 +44,7 @@ function TestRunStateLogic:setUp()
 end
 
 function TestRunStateLogic:testScratchSupportsValuesMapsAndTake()
-    local runState = self.module.create(MakeStore())
+    local runState = self.module.create()
 
     runState.scratch.set("activeGod", "Apollo")
     lu.assertEquals(runState.scratch.get("activeGod"), "Apollo")
@@ -58,47 +59,51 @@ function TestRunStateLogic:testScratchSupportsValuesMapsAndTake()
 end
 
 function TestRunStateLogic:testRunCacheTracksAcquisitionsPerCurrentRun()
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 2 }))
+    local runState = self.module.create()
+    local runtime = MakeRuntime({ ImproveFirstNBoonRarity = 2 })
 
-    lu.assertTrue(runState.hasCurrentRun())
-    lu.assertEquals(runState.getBanPoolIndex("Apollo"), 1)
-    lu.assertEquals(runState.recordAcquisition("Apollo"), 1)
-    lu.assertEquals(runState.getBanPoolIndex("Apollo"), 2)
+    lu.assertTrue(runState.hasCurrentRun(runtime))
+    lu.assertEquals(runState.getBanPoolIndex(runtime, "Apollo"), 1)
+    lu.assertEquals(runState.recordAcquisition(runtime, "Apollo"), 1)
+    lu.assertEquals(runState.getBanPoolIndex(runtime, "Apollo"), 2)
 
     local oldRun = CurrentRun
     CurrentRun = {}
-    lu.assertEquals(runState.getBanPoolIndex("Apollo"), 1)
+    lu.assertEquals(runState.getBanPoolIndex(runtime, "Apollo"), 1)
     CurrentRun = oldRun
-    lu.assertEquals(runState.getBanPoolIndex("Apollo"), 2)
+    lu.assertEquals(runState.getBanPoolIndex(runtime, "Apollo"), 2)
 end
 
 function TestRunStateLogic:testForcedRarityConsumesOnlyWhenConfiguredAndGodTrait()
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 1 }))
+    local runState = self.module.create()
+    local runtime = MakeRuntime({ ImproveFirstNBoonRarity = 1 })
 
-    lu.assertEquals(runState.getForcedRarityRemaining(), 1)
-    lu.assertTrue(runState.shouldForceRarity({ GodLoot = true }))
-    lu.assertTrue(runState.consumeForcedRarity("ApolloStrike"))
-    lu.assertEquals(runState.getForcedRarityRemaining(), 0)
-    lu.assertFalse(runState.consumeForcedRarity("ApolloStrike"))
+    lu.assertEquals(runState.getForcedRarityRemaining(runtime), 1)
+    lu.assertTrue(runState.shouldForceRarity(runtime, { GodLoot = true }))
+    lu.assertTrue(runState.consumeForcedRarity(runtime, "ApolloStrike"))
+    lu.assertEquals(runState.getForcedRarityRemaining(runtime), 0)
+    lu.assertFalse(runState.consumeForcedRarity(runtime, "ApolloStrike"))
 end
 
 function TestRunStateLogic:testMissingCurrentRunReturnsSafeDefaults()
     CurrentRun = nil
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 3 }))
+    local runState = self.module.create()
+    local runtime = MakeRuntime({ ImproveFirstNBoonRarity = 3 })
 
-    lu.assertFalse(runState.hasCurrentRun())
-    lu.assertEquals(runState.getBanPoolIndex("Apollo"), 1)
-    lu.assertNil(runState.recordAcquisition("Apollo"))
-    lu.assertEquals(runState.getForcedRarityRemaining(), 0)
-    lu.assertFalse(runState.consumeForcedRarity("ApolloStrike"))
+    lu.assertFalse(runState.hasCurrentRun(runtime))
+    lu.assertEquals(runState.getBanPoolIndex(runtime, "Apollo"), 1)
+    lu.assertNil(runState.recordAcquisition(runtime, "Apollo"))
+    lu.assertEquals(runState.getForcedRarityRemaining(runtime), 0)
+    lu.assertFalse(runState.consumeForcedRarity(runtime, "ApolloStrike"))
 end
 
 function TestRunStateLogic:testForcedRarityDoesNotConsumeForNonGodTrait()
     IsGodTrait = function()
         return false
     end
-    local runState = self.module.create(MakeStore({ ImproveFirstNBoonRarity = 1 }))
+    local runState = self.module.create()
+    local runtime = MakeRuntime({ ImproveFirstNBoonRarity = 1 })
 
-    lu.assertFalse(runState.consumeForcedRarity("NonGodTrait"))
-    lu.assertEquals(runState.getForcedRarityRemaining(), 1)
+    lu.assertFalse(runState.consumeForcedRarity(runtime, "NonGodTrait"))
+    lu.assertEquals(runState.getForcedRarityRemaining(runtime), 1)
 end

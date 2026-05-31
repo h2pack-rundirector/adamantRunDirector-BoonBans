@@ -1,9 +1,15 @@
+local uiStyle = import("mods/ui/ui_style.lua")
+local uiRoots = import("mods/ui/ui_roots.lua", nil, { style = uiStyle })
+local uiDeps = {
+    style = uiStyle,
+    roots = uiRoots,
+}
+local olympiansUi = import("mods/ui/ui_olympians.lua", nil, uiDeps)
+local hammersUi = import("mods/ui/ui_hammers.lua", nil, uiDeps)
+local npcsUi = import("mods/ui/ui_npcs.lua", nil, uiDeps)
+local otherGodsUi = import("mods/ui/ui_other_gods.lua", nil, uiDeps)
+
 local module = {}
-local uiCommands = nil
-local olympiansUi = nil
-local hammersUi = nil
-local npcsUi = nil
-local otherGodsUi = nil
 
 local FIRST_N_RARITY_DROPDOWN_OPTS = {
     label = "Force First N Boons to Be Epic",
@@ -20,23 +26,23 @@ local QUICK_RESET_ALL_CONFIRM_OPTS = {
     confirmLabel = "Confirm Reset All",
 }
 
-local function DrawSettingsTab(draw, state, actions)
+local function DrawSettingsTab(_, ui)
+    local draw = ui.draw
+    local dataRefs = ui.data
     local imgui = draw.imgui
 
-    draw.widgets.dropdown(state.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
+    draw.widgets.dropdown(dataRefs.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
-    RESET_ALL_BANS_CONFIRM_OPTS.action = actions.get("resetAllBans")
+    RESET_ALL_BANS_CONFIRM_OPTS.action = ui.actions.get("resetAllBans")
     draw.widgets.confirmButton("boon_bans_reset_all_bans", "RESET ALL BANS (Global)", RESET_ALL_BANS_CONFIRM_OPTS)
 
-    RESET_ALL_RARITY_CONFIRM_OPTS.action = actions.get("resetAllRarity")
+    RESET_ALL_RARITY_CONFIRM_OPTS.action = ui.actions.get("resetAllRarity")
     draw.widgets.confirmButton("boon_bans_reset_all_rarity", "RESET ALL RARITY (Global)", RESET_ALL_RARITY_CONFIRM_OPTS)
 end
 
-function module.drawTab(_, ui)
+function module.drawTab(host, ui)
     local draw = ui.draw
-    local state = ui.data
-    local actions = ui.actions
     local imgui = draw.imgui
 
     if not imgui.BeginTabBar("BoonBansLeanTabs") then
@@ -44,27 +50,27 @@ function module.drawTab(_, ui)
     end
 
     if imgui.BeginTabItem("Olympians") then
-        olympiansUi.draw(draw, state, actions)
+        olympiansUi.draw(host, ui)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Other Gods") then
-        otherGodsUi.draw(draw, state, actions)
+        otherGodsUi.draw(host, ui)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Hammers") then
-        hammersUi.draw(draw, state, actions)
+        hammersUi.draw(host, ui)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("NPCs") then
-        npcsUi.draw(draw, state, actions)
+        npcsUi.draw(host, ui)
         imgui.EndTabItem()
     end
 
     if imgui.BeginTabItem("Settings") then
-        DrawSettingsTab(draw, state, actions)
+        DrawSettingsTab(host, ui)
         imgui.EndTabItem()
     end
 
@@ -74,28 +80,8 @@ end
 
 function module.drawQuickContent(_, ui)
     local draw = ui.draw
-    local actions = ui.actions
-    QUICK_RESET_ALL_CONFIRM_OPTS.action = actions.get("resetAllControls")
+    QUICK_RESET_ALL_CONFIRM_OPTS.action = ui.actions.get("resetAllControls")
     draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS)
-end
-
-function module.bind(state, commands)
-    local uiModel = import("mods/ui/ui_model.lua").create(state)
-    uiCommands = commands or import("mods/ui/ui_commands.lua").create(state)
-    local uiComponentsModule = import("mods/ui/ui_components.lua")
-    local uiComponents = uiComponentsModule.bind(state, uiModel, uiCommands)
-    local uiDeps = {
-        state = state,
-        model = uiModel,
-        commands = uiCommands,
-        components = uiComponents,
-        godAvailability = state.godAvailability,
-    }
-    olympiansUi = import("mods/ui/ui_olympians.lua").bind(uiDeps)
-    hammersUi = import("mods/ui/ui_hammers.lua").bind(uiDeps)
-    npcsUi = import("mods/ui/ui_npcs.lua").bind(uiDeps)
-    otherGodsUi = import("mods/ui/ui_other_gods.lua").bind(uiDeps)
-    return module
 end
 
 return module

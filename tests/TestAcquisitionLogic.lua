@@ -32,7 +32,7 @@ local function MakeRunState()
         hasCurrentRun = function()
             return true
         end,
-        recordAcquisition = function(godKey)
+        recordAcquisition = function(_, godKey)
             counts[godKey] = (counts[godKey] or 0) + 1
             return counts[godKey]
         end,
@@ -56,14 +56,6 @@ function TestAcquisitionLogic:setUp()
         ZeusStrikeBoon = {},
     }
 
-    self.data = {
-        banConfig = {
-            ResolveGodKey = function(key)
-                return key
-            end,
-        },
-    }
-
     self.runState = MakeRunState()
     self.host = {
         hooks = {
@@ -77,8 +69,9 @@ function TestAcquisitionLogic:setUp()
         end,
         logIf = function() end,
     }
-    self.banResolver = {
-        getGodFromLootsource = function(lootKey)
+    self.runtime = {}
+    self.traitInfo = {
+        controlFromLoot = function(lootKey)
             if lootKey == "ZeusUpgrade" then
                 return "Zeus"
             end
@@ -87,20 +80,34 @@ function TestAcquisitionLogic:setUp()
             end
             return nil
         end,
-        getTraitGodKey = function(traitName)
+        primarySourceName = function(sourceName)
+            return sourceName
+        end,
+        controlFromTrait = function(traitName)
             if traitName == "ZeusStrikeBoon" then
-                return "Zeus"
+                return {
+                    controlName = "Zeus",
+                    sourceName = "Zeus",
+                    tierKey = "Zeus",
+                    tierIndex = 1,
+                    traitName = traitName,
+                }
             end
             return nil
         end,
     }
 
-    local acquisition = dofile("src/mods/logic/acquisition.lua").bind(self.data)
-    acquisition.registerHooks(self.host, self.runState, self.banResolver)
+    assert(loadfile("src/mods/logic/acquisition.lua"))({
+        module = self.host,
+        runState = self.runState,
+        traitInfo = self.traitInfo,
+    })
 end
 
 function TestAcquisitionLogic:testDuoAcquisitionUsesRememberedOfferSource()
     self.wraps.CreateUpgradeChoiceButton(
+        self.host,
+        self.runtime,
         function()
             return { Data = { Name = "ReboundingSparkBoon" } }
         end,
@@ -108,8 +115,10 @@ function TestAcquisitionLogic:testDuoAcquisitionUsesRememberedOfferSource()
         { Name = "ZeusUpgrade" }
     )
 
-    self.wraps.OpenUpgradeChoiceMenu(function() end, { Name = "ApolloUpgrade" })
+    self.wraps.OpenUpgradeChoiceMenu(self.host, self.runtime, function() end, { Name = "ApolloUpgrade" })
     self.wraps.CreateUpgradeChoiceButton(
+        self.host,
+        self.runtime,
         function()
             return { Data = { Name = "ReboundingSparkBoon" } }
         end,
@@ -117,44 +126,69 @@ function TestAcquisitionLogic:testDuoAcquisitionUsesRememberedOfferSource()
         { Name = "ZeusUpgrade" }
     )
 
-    self.wraps.AddTraitToHero(function()
-        return { Name = "ReboundingSparkBoon" }
-    end, {
-        FromLoot = true,
-    })
+    self.wraps.AddTraitToHero(
+        self.host,
+        self.runtime,
+        function()
+            return { Name = "ReboundingSparkBoon" }
+        end,
+        {
+            FromLoot = true,
+        }
+    )
 
     lu.assertEquals(self.runState.getCount("Zeus"), 1)
     lu.assertEquals(self.runState.getCount("Apollo"), 0)
 end
 
-function TestAcquisitionLogic:testNonDuoFallsBackToCatalog()
-    self.wraps.AddTraitToHero(function()
-        return { Name = "ZeusStrikeBoon" }
-    end, {
-        FromLoot = true,
-    })
+function TestAcquisitionLogic:testNonDuoFallsBackToSourceResolver()
+    self.wraps.AddTraitToHero(
+        self.host,
+        self.runtime,
+        function()
+            return { Name = "ZeusStrikeBoon" }
+        end,
+        {
+            FromLoot = true,
+        }
+    )
 
     lu.assertEquals(self.runState.getCount("Zeus"), 1)
 end
 
 function TestAcquisitionLogic:testAcquisitionOnlyAdvancesForLootWithoutSkipFlags()
-    self.wraps.AddTraitToHero(function()
-        return { Name = "ZeusStrikeBoon" }
-    end, {})
+    self.wraps.AddTraitToHero(
+        self.host,
+        self.runtime,
+        function()
+            return { Name = "ZeusStrikeBoon" }
+        end,
+        {}
+    )
     lu.assertEquals(self.runState.getCount("Zeus"), 0)
 
-    self.wraps.AddTraitToHero(function()
-        return { Name = "ZeusStrikeBoon" }
-    end, {
-        FromLoot = true,
-        SkipActivatedTraitUpdate = true,
-    })
+    self.wraps.AddTraitToHero(
+        self.host,
+        self.runtime,
+        function()
+            return { Name = "ZeusStrikeBoon" }
+        end,
+        {
+            FromLoot = true,
+            SkipActivatedTraitUpdate = true,
+        }
+    )
     lu.assertEquals(self.runState.getCount("Zeus"), 0)
 
-    self.wraps.AddTraitToHero(function()
-        return { Name = "ZeusStrikeBoon" }
-    end, {
-        FromLoot = true,
-    })
+    self.wraps.AddTraitToHero(
+        self.host,
+        self.runtime,
+        function()
+            return { Name = "ZeusStrikeBoon" }
+        end,
+        {
+            FromLoot = true,
+        }
+    )
     lu.assertEquals(self.runState.getCount("Zeus"), 1)
 end

@@ -1,5 +1,5 @@
 -- Static giver and ban-pool definitions. This table owns structure only;
--- player choices live in store/data refs, and resolved game data lives in catalog.
+-- player choices live in data refs, and resolved game data feeds controls/source lookup.
 local godDefs = {}
 
 local GROUP_CORE       = "Core"
@@ -268,33 +268,33 @@ end
 
 
 local rarityEligible = {
-    Aphrodite  = "PackedRarityAphrodite",
-    Apollo     = "PackedRarityApollo",
-    Ares       = "PackedRarityAres",
-    Demeter    = "PackedRarityDemeter",
-    Hephaestus = "PackedRarityHephaestus",
-    Hera       = "PackedRarityHera",
-    Hestia     = "PackedRarityHestia",
-    Poseidon   = "PackedRarityPoseidon",
-    Zeus       = "PackedRarityZeus",
+    Aphrodite  = true,
+    Apollo     = true,
+    Ares       = true,
+    Demeter    = true,
+    Hephaestus = true,
+    Hera       = true,
+    Hestia     = true,
+    Poseidon   = true,
+    Zeus       = true,
 
-    Hermes     = "PackedRarityHermes",
-    Artemis    = "PackedRarityArtemis",
-    Athena     = "PackedRarityAthena",
-    Dionysus   = "PackedRarityDionysus"
+    Hermes     = true,
+    Artemis    = true,
+    Athena     = true,
+    Dionysus   = true,
 }
 
-for key, varName in pairs(rarityEligible) do
+for key in pairs(rarityEligible) do
     if godDefs[key] then
-        godDefs[key].rarityVar = varName
+        godDefs[key].hasRarity = true
     end
 end
 
 for _, entry in pairs(godDefs) do
     if entry.duplicateOf then
         local parent = godDefs[entry.duplicateOf]
-        if parent and parent.rarityVar then
-            entry.rarityVar = parent.rarityVar
+        if parent and parent.hasRarity then
+            entry.hasRarity = true
         end
     end
 end

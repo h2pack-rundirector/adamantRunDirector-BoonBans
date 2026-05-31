@@ -1,21 +1,9 @@
 local EMPTY_COUNTS = {}
 local RUN_STATE_CACHE = "RunState"
 
-local function ResolveSource(source)
-    if type(source) == "function" then
-        source = source()
-    end
-    return source
-end
-
-local function GetData(source)
-    source = ResolveSource(source)
-    return source and source.data or source
-end
-
-local function ReadStore(source, alias)
-    local data = GetData(source)
-    return data.get(alias):read()
+local function ReadRuntime(runtime, alias)
+    local data = runtime and runtime.data or nil
+    return data and data.get(alias):read() or nil
 end
 
 local function buildCacheDeclarations()
@@ -32,7 +20,7 @@ local function buildCacheDeclarations()
     }
 end
 
-local function create(store)
+local function create()
     local scratch = {
         values = {},
         maps = {},
@@ -41,40 +29,39 @@ local function create(store)
     local runState = {}
     runState.scratch = {}
 
-    local function GetCache()
-        local source = ResolveSource(store)
-        local cache = source and source.cache and source.cache.currentRun.get(RUN_STATE_CACHE) or nil
+    local function GetCache(runtime)
+        local cache = runtime and runtime.cache and runtime.cache.currentRun.get(RUN_STATE_CACHE) or nil
         if not cache then return nil end
         if not cache.BanPoolPickCounts then
             cache.BanPoolPickCounts = {}
         end
         if cache.ImproveFirstNBoonRarity == nil then
-            cache.ImproveFirstNBoonRarity = ReadStore(store, "ImproveFirstNBoonRarity") or 0
+            cache.ImproveFirstNBoonRarity = ReadRuntime(runtime, "ImproveFirstNBoonRarity") or 0
         end
         return cache
     end
 
-    function runState.hasCurrentRun()
-        return GetCache() ~= nil
+    function runState.hasCurrentRun(runtime)
+        return GetCache(runtime) ~= nil
     end
 
-    function runState.getBanPoolPickCounts()
-        local cache = GetCache()
+    function runState.getBanPoolPickCounts(runtime)
+        local cache = GetCache(runtime)
         if not cache then
             return EMPTY_COUNTS
         end
         return cache.BanPoolPickCounts
     end
 
-    function runState.getBanPoolIndex(godKey)
+    function runState.getBanPoolIndex(runtime, godKey)
         if not godKey then
             return 1
         end
-        return (runState.getBanPoolPickCounts()[godKey] or 0) + 1
+        return (runState.getBanPoolPickCounts(runtime)[godKey] or 0) + 1
     end
 
-    function runState.recordAcquisition(godKey)
-        local cache = GetCache()
+    function runState.recordAcquisition(runtime, godKey)
+        local cache = GetCache(runtime)
         if not cache or not godKey then
             return nil
         end
@@ -118,17 +105,17 @@ local function create(store)
         return value
     end
 
-    function runState.getForcedRarityRemaining()
-        local cache = GetCache()
+    function runState.getForcedRarityRemaining(runtime)
+        local cache = GetCache(runtime)
         return cache and cache.ImproveFirstNBoonRarity or 0
     end
 
-    function runState.shouldForceRarity(loot)
-        return runState.getForcedRarityRemaining() > 0 and loot and loot.GodLoot == true
+    function runState.shouldForceRarity(runtime, loot)
+        return runState.getForcedRarityRemaining(runtime) > 0 and loot and loot.GodLoot == true
     end
 
-    function runState.consumeForcedRarity(traitName)
-        local cache = GetCache()
+    function runState.consumeForcedRarity(runtime, traitName)
+        local cache = GetCache(runtime)
         if not cache or not traitName or not IsGodTrait(traitName) then
             return false
         end

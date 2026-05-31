@@ -1,8 +1,8 @@
-local uiData, components = nil, nil
-local banConfig = nil
-local ACTIVE_HAMMER_ROOT_ALIAS = "ActiveHammerRoot"
+local deps = ...
+local uiStyle = deps.style
+local uiRoots = deps.roots
 
-local HAMMER_FORCE_ROW_OPTS = {
+local HAMMER_SETUP_OPTS = {
     controlWidth = 200,
     drawRarity = false,
 }
@@ -14,6 +14,7 @@ local hammerTabs = {}
 local hammerRoots = {}
 local hammerRootsByKey = {}
 local hammerRootCountsByKey = {}
+local activeHammerRootId = "Staff"
 
 local HAMMER_ROOT_KEYS = {
     "Staff",
@@ -24,40 +25,29 @@ local HAMMER_ROOT_KEYS = {
     "Suit",
 }
 
-local function GetHammerRoot(godKey, state)
-    local configuredCount = banConfig.GetConfiguredBanPoolCount(godKey, state)
+local function GetHammerRoot(godKey, ui)
+    local source = ui.controls.get(godKey)
+    local configuredCount = source:tierCount()
     local cached = hammerRootsByKey[godKey]
     if cached and hammerRootCountsByKey[godKey] == configuredCount then
         return cached
     end
 
-    cached = uiData.BuildBanPoolRoot(godKey, {
-        state = state,
-        hasRarity = false,
-    })
+    cached = uiRoots.buildTraitSourceRoot(source)
     hammerRootsByKey[godKey] = cached
     hammerRootCountsByKey[godKey] = configuredCount
     return cached
 end
 
-local function GetHammerRoots(state)
+local function GetHammerRoots(ui)
     for index = #hammerRoots, 1, -1 do
         hammerRoots[index] = nil
     end
 
     for _, godKey in ipairs(HAMMER_ROOT_KEYS) do
-        hammerRoots[#hammerRoots + 1] = GetHammerRoot(godKey, state)
+        hammerRoots[#hammerRoots + 1] = GetHammerRoot(godKey, ui)
     end
     return hammerRoots
-end
-
-local function IsHammerCustomized(root, state)
-    for _, banPool in ipairs(root.banPools) do
-        if banConfig.IsBanPoolCustomized(banPool.key, state) then
-            return true
-        end
-    end
-    return false
 end
 
 local function IsHammerEquipped(root)
@@ -65,12 +55,12 @@ local function IsHammerEquipped(root)
     return equippedWeapon ~= "" and equippedWeapon:find(root.id, 1, true) ~= nil
 end
 
-local function GetHammerNavLabel(root, state)
+local function GetHammerNavLabel(root, ui)
     local label = root.label
     if IsHammerEquipped(root) then
         label = ">> " .. label .. " <<"
     end
-    if IsHammerCustomized(root, state) then
+    if ui.controls.get(root.controlName):isCustomized() then
         label = label .. " *"
     end
     return label
@@ -85,16 +75,11 @@ local function GetActiveHammerRoot(roots, activeRootId)
     return roots[1]
 end
 
-local function DrawHammerForcePanel(draw, state, root)
-    draw.widgets.text("Setup")
-    draw.widgets.separator()
-    components.DrawConfiguredBanPoolControl(draw, state, root)
-    for _, banPool in ipairs(root.banPools) do
-        components.DrawForceBanRow(draw, state, root, banPool, HAMMER_FORCE_ROW_OPTS)
-    end
+local function DrawHammerSetupPanel(ui, controlName)
+    ui.draw.control(ui.controls.get(controlName), "setup", HAMMER_SETUP_OPTS)
 end
 
-local function SetHammerTab(index, root, state)
+local function SetHammerTab(index, root, ui)
     local tab = hammerTabs[index]
     if not tab then
         tab = {}
@@ -102,8 +87,8 @@ local function SetHammerTab(index, root, state)
     end
 
     tab.key = root.id
-    tab.label = GetHammerNavLabel(root, state)
-    tab.color = uiData.GetGodColor(root.primaryGodKey)
+    tab.label = GetHammerNavLabel(root, ui)
+    tab.color = root.color
 end
 
 local function TrimHammerTabs(tabCount)
@@ -112,24 +97,25 @@ local function TrimHammerTabs(tabCount)
     end
 end
 
-local function DrawHammersTab(draw, state, actions)
+local function DrawHammersTab(_, ui)
+    local draw = ui.draw
     local imgui = draw.imgui
-    local activeRootField = state.get(ACTIVE_HAMMER_ROOT_ALIAS)
-    local roots = GetHammerRoots(state)
+    local roots = GetHammerRoots(ui)
     local tabCount = 0
     for _, root in ipairs(roots) do
         tabCount = tabCount + 1
-        SetHammerTab(tabCount, root, state)
+        SetHammerTab(tabCount, root, ui)
     end
     TrimHammerTabs(tabCount)
 
-    local activeRootValue = activeRootField:read()
-    HAMMER_NAV_OPTS.navWidth = uiData.ROOT_NAV_WIDTH
+    local activeRootValue = GetActiveHammerRoot(roots, activeHammerRootId).id
+    activeHammerRootId = activeRootValue
+    HAMMER_NAV_OPTS.navWidth = uiStyle.ROOT_NAV_WIDTH
     HAMMER_NAV_OPTS.tabs = hammerTabs
     HAMMER_NAV_OPTS.activeKey = activeRootValue
     local activeRootId = draw.nav.verticalTabs(HAMMER_NAV_OPTS)
     if activeRootId ~= activeRootValue then
-        activeRootField:write(activeRootId)
+        activeHammerRootId = activeRootId
     end
 
     local root = GetActiveHammerRoot(roots, activeRootId)
@@ -137,34 +123,24 @@ local function DrawHammersTab(draw, state, actions)
     imgui.BeginChild("BoonBansHammersDetail", 0, 0, false)
     if imgui.BeginTabBar("BoonBansHammersViews##" .. root.id) then
         if imgui.BeginTabItem("Setup") then
-            DrawHammerForcePanel(draw, state, root)
+            DrawHammerSetupPanel(ui, root.controlName)
             imgui.EndTabItem()
         end
-        for _, banPool in ipairs(root.banPools) do
+        local source = ui.controls.get(root.controlName)
+        for tierIndex, banPool in ipairs(root.banPools) do
             if imgui.BeginTabItem(banPool.label) then
-                components.DrawBanPanel(draw, state, actions, banPool.key, "hammer")
+                draw.control(source, "tier", tierIndex)
                 imgui.EndTabItem()
             end
         end
         imgui.EndTabBar()
     else
-        DrawHammerForcePanel(draw, state, root)
+        DrawHammerSetupPanel(ui, root.controlName)
     end
     imgui.EndChild()
 end
 
 local module = {}
-
-function module.bind(deps)
-    banConfig = deps.state.banConfig
-    uiData = deps.model
-    components = deps.components
-    hammerTabs = {}
-    hammerRoots = {}
-    hammerRootsByKey = {}
-    hammerRootCountsByKey = {}
-    return module
-end
 
 module.draw = DrawHammersTab
 

@@ -29,37 +29,34 @@ function module.registerShared(host)
     })
 end
 
+function module.read(source)
+    return source.shared.read(GOD_AVAILABILITY_REF)
+end
+
+function module.isSnapshotActive(snapshot)
+    return snapshot and snapshot.active == true
+end
+
+function module.isSnapshotAvailable(snapshot, godKey)
+    if not GOD_KEY_SET[godKey] then
+        return true
+    end
+    if not module.isSnapshotActive(snapshot) then
+        return true
+    end
+    return not snapshot.available or snapshot.available[godKey] ~= false
+end
+
+function module.isActive(source)
+    return module.isSnapshotActive(module.read(source))
+end
+
+function module.isAvailable(source, godKey)
+    return module.isSnapshotAvailable(module.read(source), godKey)
+end
+
 function module.create()
-    local api = {}
-    api.registerShared = module.registerShared
-
-    function api.read(source)
-        return source.shared.read(GOD_AVAILABILITY_REF)
-    end
-
-    function api.isSnapshotActive(snapshot)
-        return snapshot and snapshot.active == true
-    end
-
-    function api.isSnapshotAvailable(snapshot, godKey)
-        if not GOD_KEY_SET[godKey] then
-            return true
-        end
-        if not api.isSnapshotActive(snapshot) then
-            return true
-        end
-        return not snapshot.available or snapshot.available[godKey] ~= false
-    end
-
-    function api.isActive(source)
-        return api.isSnapshotActive(api.read(source))
-    end
-
-    function api.isAvailable(source, godKey)
-        return api.isSnapshotAvailable(api.read(source), godKey)
-    end
-
-    return api
+    return module
 end
 
 return module
