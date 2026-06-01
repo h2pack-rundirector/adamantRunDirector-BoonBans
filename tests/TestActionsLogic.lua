@@ -5,7 +5,8 @@ local lu = require("luaunit")
 
 TestActionsLogic = {}
 
-local function MakeSource(rows, rarity)
+local function MakeSource(rows, rarity, defaultTierCount)
+    defaultTierCount = defaultTierCount or 1
     local source = {}
 
     function source:tierCount()
@@ -33,6 +34,22 @@ local function MakeSource(rows, rarity)
         end
         rarity.value = 0
         return true
+    end
+
+    function source:resetAll()
+        local changed = self:resetAllTiers()
+        while #rows > defaultTierCount do
+            rows[#rows] = nil
+            changed = true
+        end
+        while #rows < defaultTierCount do
+            rows[#rows + 1] = 0
+            changed = true
+        end
+        if self:resetRarity() then
+            changed = true
+        end
+        return changed
     end
 
     return source
@@ -81,6 +98,15 @@ function TestActionsLogic:testResetAllBansClearsConfiguredSources()
     lu.assertTrue(self.actions.resetAllBans(self.host, nil, nil, nil, self.actionContext))
     lu.assertEquals(self.rows[1], 0)
     lu.assertEquals(self.rows[2], 0)
+end
+
+function TestActionsLogic:testResetAllControlsRestoresDefaultTierCount()
+    self.rows[2] = 3
+    lu.assertTrue(self.actions.resetAllControls(self.host, nil, nil, nil, self.actionContext))
+    lu.assertEquals(self.rows, { 0 })
+    lu.assertEquals(self.rarity.value, 0)
+
+    lu.assertFalse(self.actions.resetAllControls(self.host, nil, nil, nil, self.actionContext))
 end
 
 function TestActionsLogic:testSetBridalGlowTargetWritesOnlyOnChange()

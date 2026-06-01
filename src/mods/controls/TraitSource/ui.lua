@@ -341,6 +341,9 @@ function ui.create(fields, instance)
     function control:setTierCount(count)
         local nextCount = data.normalizeTierCount(instance, count)
         local currentCount = self:tierCount()
+        if currentCount == nextCount then
+            return false
+        end
         while currentCount < nextCount do
             fields.Tiers:append()
             currentCount = currentCount + 1
@@ -378,6 +381,10 @@ function ui.create(fields, instance)
         return changed
     end
 
+    function control:resetTierCount()
+        return self:setTierCount(self:defaultTiers())
+    end
+
     function control:resetRarity()
         if fields.Rarity == nil then
             return false
@@ -387,8 +394,9 @@ function ui.create(fields, instance)
 
     function control:resetAll()
         local tiersChanged = self:resetAllTiers()
+        local tierCountChanged = self:resetTierCount()
         local rarityChanged = self:resetRarity()
-        return tiersChanged or rarityChanged
+        return tiersChanged or tierCountChanged or rarityChanged
     end
 
     instance.valueColors = buildValueColorsFromSchema(fields.Tiers:get(1, "Bans"))

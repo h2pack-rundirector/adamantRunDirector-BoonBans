@@ -39,6 +39,45 @@ local function isControlOwner(godKey, def)
         and (def.banPoolIndex or 1) == 1
 end
 
+local function isRequiredControl(def)
+    return def and def.lootSource ~= nil and def.allowEmptyControl ~= true
+end
+
+local function describeLootSource(def)
+    local src = def and def.lootSource or nil
+    if src == nil then
+        return "unknown source"
+    end
+    if src.type == "LootSet" then
+        return "LootSet " .. tostring(src.key or def.key)
+    end
+    if src.type == "UnitSet" then
+        return "UnitSet " .. tostring(src.unitKey) .. "/" .. tostring(src.unitSetKey)
+    end
+    if src.type == "WeaponUpgrade" then
+        return "WeaponUpgrade " .. tostring(src.key or def.key)
+    end
+    if src.type == "MetaUpgrade" then
+        return "MetaUpgrade " .. tostring(src.dataSource or def.key)
+    end
+    if src.type == "Keepsake" then
+        return "Keepsake " .. tostring(src.key or def.key)
+    end
+    return tostring(src.type or "unknown source")
+end
+
+local function requireControlItems(godKey, def, items)
+    if #items > 0 or not isRequiredControl(def) then
+        return
+    end
+
+    error(string.format(
+        "BoonBans data error: required control %s produced no traits from %s; game-data extraction failed.",
+        tostring(godKey),
+        describeLootSource(def)
+    ), 0)
+end
+
 local function getDisplayLabel(godKey, def)
     local display = def and def.displayTextKey or godKey
     if getMaxTiers(def) > 1 then
@@ -63,6 +102,7 @@ function declarations.build(godDefs, catalog)
         local def = godDefs[godKey]
         local entry = entries[godKey]
         local items = buildItems(entry, def and def.showPackedValueColors)
+        requireControlItems(godKey, def, items)
         if #items > 0 then
             controls[godKey] = {
                 template = "TraitSource",

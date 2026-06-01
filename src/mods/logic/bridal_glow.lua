@@ -4,17 +4,19 @@
 local deps = ...
 local moduleRef = deps.module
 
-moduleRef.hooks.wrap("HeraSuperchargeBoon", function(_, runtime, base, args, origTraitData, contextArgs)
+moduleRef.hooks.wrap("HeraSuperchargeBoon", function(host, runtime, base, args, origTraitData, contextArgs)
+    if not host.isEnabled() then
+        return base(args, origTraitData, contextArgs)
+    end
+
     local targetBoon = runtime.data.get("BridalGlowTargetBoon"):read()
     if not targetBoon or targetBoon == "" then
-        base(args, origTraitData, contextArgs)
-        return
+        return base(args, origTraitData, contextArgs)
     end
 
     local targetTrait = GetHeroTrait(targetBoon)
     if not targetTrait or targetTrait.BlockStacking == true then
-        base(args, origTraitData, contextArgs)
-        return
+        return base(args, origTraitData, contextArgs)
     end
 
     contextArgs = contextArgs or {}
@@ -26,8 +28,7 @@ moduleRef.hooks.wrap("HeraSuperchargeBoon", function(_, runtime, base, args, ori
     })
 
     if not traitData then
-        base(args, origTraitData, contextArgs)
-        return
+        return base(args, origTraitData, contextArgs)
     end
 
     thread(AddStackToTraits, { TraitName = traitData.Name, NumStacks = args.Stacks, Silent = true })

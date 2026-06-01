@@ -131,6 +131,33 @@ function TestDataLogic.testStorageKeepsGlobalsAndControlsDeclareTraitSources()
     lu.assertEquals(controls.Staff.showValueColors, false)
 end
 
+function TestDataLogic.testControlsFailFastWhenRequiredSourceHasNoExtractedTraits()
+    local godDefs = {
+        Apollo = {
+            key = "Apollo",
+            displayTextKey = "Apollo",
+            lootSource = { type = "LootSet", key = "ApolloUpgrade" },
+            banPoolGroupKey = "Apollo",
+            banPoolIndex = 1,
+        },
+    }
+    local catalog = {
+        entries = {
+            Apollo = {
+                boons = {},
+            },
+        },
+    }
+
+    local ok, err = pcall(function()
+        dofile("src/mods/data/controls.lua").build(godDefs, catalog)
+    end)
+
+    lu.assertFalse(ok)
+    lu.assertNotNil(string.find(err, "required control Apollo produced no traits", 1, true))
+    lu.assertNotNil(string.find(err, "LootSet ApolloUpgrade", 1, true))
+end
+
 function TestDataLogic.testTraitSourceUsesTraitNamesAsPackedKeys()
     local templates = dofile("src/mods/controls/templates.lua")
     local instance = templates.TraitSource.prepare({
