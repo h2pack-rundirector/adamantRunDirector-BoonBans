@@ -4,21 +4,14 @@ local deps = ...
 local moduleRef = deps.module
 local runState = deps.runState
 local traitInfo = deps.traitInfo
-local jpomContext = deps.jpomContext
 local offerContext = deps.offerContext
 
 local skipIsTraitEligible = false
 
-local function shouldBlockTraitEligibility(traitName, runtime, opts)
-    opts = opts or {}
+local function shouldBlockTraitEligibility(traitName, runtime)
     local source, info = traitInfo.resolveCurrentTrait(runtime, traitName)
     if not info then
         return false
-    end
-
-    if opts.isKeepsakeOffering and info.tierKey == "Hades" then
-        local keepsake = traitInfo.hadesKeepsake(runtime)
-        return keepsake ~= nil and keepsake:isBanned(traitName, 1) == true
     end
 
     local tierIndex = info.tierIndex or 1
@@ -140,19 +133,16 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
     return queue
 end)
 
-moduleRef.hooks.wrap("GetReplacementTraits", function(_, _, base, traitNames, onlyFromLootName)
-    skipIsTraitEligible = true
-    local result = base(traitNames, onlyFromLootName)
-    skipIsTraitEligible = false
-    return result
+moduleRef.hooks.contextWrap("GetReplacementTraits", function(_, _, context)
+    context.wrap("IsTraitEligible", function(base, traitData, args)
+        return base(traitData, args)
+    end)
 end)
 
 moduleRef.hooks.wrap("IsTraitEligible", function(host, runtime, base, traitData, args)
     if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
 
-    if shouldBlockTraitEligibility(traitData.Name, runtime, {
-        isKeepsakeOffering = jpomContext.isJpomOffering,
-    }) then
+    if shouldBlockTraitEligibility(traitData.Name, runtime) then
         host.logIf("[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
         return false
     end

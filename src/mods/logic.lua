@@ -22,9 +22,6 @@ function logic.attachHooks(module)
         runState = runState,
         traitInfo = traitInfo,
     }
-    local jpomContext = {
-        isJpomOffering = false,
-    }
     local offerContext = {
         scratchKey = "lootOffers",
     }
@@ -37,17 +34,13 @@ function logic.attachHooks(module)
     import("mods/logic/filtering_bnb.lua", nil, baseDeps)
     import("mods/logic/filtering_crd.lua", nil, baseDeps)
     import("mods/logic/filtering_hex.lua", nil, baseDeps)
-    import("mods/logic/filtering_jpom.lua", nil, {
-        module = module,
-        context = jpomContext,
-    })
+    import("mods/logic/filtering_jpom.lua", nil, baseDeps)
     import("mods/logic/filtering_judgement.lua", nil, baseDeps)
     import("mods/logic/filtering_npc.lua", nil, baseDeps)
     import("mods/logic/trait_offer_filtering.lua", nil, {
         module = module,
         runState = runState,
         traitInfo = traitInfo,
-        jpomContext = jpomContext,
         offerContext = offerContext,
     })
     import("mods/logic/trait_offer_finalization.lua", nil, {
