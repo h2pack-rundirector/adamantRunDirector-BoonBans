@@ -115,10 +115,10 @@ function TestEntrypoint:testMainLuaBootsRealModule()
         configureEnv = configureBoonBansEnv,
     })
 
-    lu.assertNotNil(boot.host)
-    lu.assertEquals(boot.host.getHostId(), "adamant-RunDirector_BoonBans")
-    lu.assertEquals(boot.host.getModuleId(), "BoonBans")
-    lu.assertEquals(boot.host.getPackId(), "run-director")
+    lu.assertNotNil(boot.liveModule)
+    lu.assertEquals(boot.liveModule.getHostId(), "adamant-RunDirector_BoonBans")
+    lu.assertEquals(boot.liveModule.getModuleId(), "BoonBans")
+    lu.assertEquals(boot.liveModule.getPackId(), "run-director")
     lu.assertEquals(#boot.callbacks.imgui, 1)
     lu.assertEquals(#boot.callbacks.menuBar, 2)
 end
