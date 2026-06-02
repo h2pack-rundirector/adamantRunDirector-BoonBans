@@ -1,7 +1,7 @@
 local deps = ...
 local uiStyle = deps.style
 local uiRoots = deps.roots
-local godAvailability = import("mods/cache/god_availability.lua")
+local godAvailability = import("mods/shared/god_availability.lua")
 local bridalGlowUi = import("mods/ui/ui_bridal_glow.lua", nil, deps)
 local mutedTextOpts = {
     color = uiStyle.MUTED_TEXT_COLOR,

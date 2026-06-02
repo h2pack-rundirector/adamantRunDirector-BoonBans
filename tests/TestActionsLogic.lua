@@ -71,13 +71,11 @@ function TestActionsLogic:setUp()
         Hera = MakeSource({ 0 }, { value = 6 }),
     }
     self.controls = MakeControls(self.sources)
-    self.state = {
-        controls = {
-            Apollo = {},
-            Hera = {},
-        },
+    self.controlDeclarations = {
+        Apollo = {},
+        Hera = {},
     }
-    self.actions = dofile("src/mods/actions.lua").create(self.state)
+    self.actions = dofile("src/mods/actions.lua").build(self.controlDeclarations)
     self.host = {
         logIf = function() end,
     }

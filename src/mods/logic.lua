@@ -4,11 +4,11 @@ local runStateModule = import("mods/logic/run_state.lua")
 
 local logic = {}
 
-function logic.buildCacheDeclarations()
-    return runStateModule.buildCacheDeclarations()
+function logic.defineCache(module)
+    module.cache.define(runStateModule.buildCacheDeclarations())
 end
 
-function logic.registerHooks(module)
+function logic.attachHooks(module)
     local runState = runStateModule.create()
     local traitInfo = import("mods/logic/trait_info.lua", nil, {
         sourceResolver = data.sourceResolver,

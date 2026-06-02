@@ -1,6 +1,8 @@
-local function collectControlNames(state)
+local actions = {}
+
+local function collectControlNames(controlDeclarations)
     local controlNames = {}
-    for controlName in pairs(state.controls or {}) do
+    for controlName in pairs(controlDeclarations or {}) do
         controlNames[#controlNames + 1] = controlName
     end
     table.sort(controlNames)
@@ -57,23 +59,27 @@ local function setBridalGlowTargetBoonKey(state, boonKey)
     return true
 end
 
-return {
-    create = function(state)
-        local controlNames = collectControlNames(state)
+function actions.build(controlDeclarations)
+    local controlNames = collectControlNames(controlDeclarations)
 
-        return {
-            resetAllRarity = function(_, _, _, _, actionContext)
-                return resetAllRarity(controlNames, actionContext.controls)
-            end,
-            resetAllBans = function(host, _, _, _, actionContext)
-                return resetAllBans(controlNames, actionContext.controls, host)
-            end,
-            resetAllControls = function(host, _, _, _, actionContext)
-                return resetAllControls(controlNames, actionContext.controls, host)
-            end,
-            setBridalGlowTarget = function(_, uiState, _, boonKey)
-                return setBridalGlowTargetBoonKey(uiState, boonKey)
-            end,
-        }
-    end,
-}
+    return {
+        resetAllRarity = function(_, _, _, _, actionContext)
+            return resetAllRarity(controlNames, actionContext.controls)
+        end,
+        resetAllBans = function(host, _, _, _, actionContext)
+            return resetAllBans(controlNames, actionContext.controls, host)
+        end,
+        resetAllControls = function(host, _, _, _, actionContext)
+            return resetAllControls(controlNames, actionContext.controls, host)
+        end,
+        setBridalGlowTarget = function(_, uiState, _, boonKey)
+            return setBridalGlowTargetBoonKey(uiState, boonKey)
+        end,
+    }
+end
+
+function actions.attach(module, controlDeclarations)
+    module.actions.define(actions.build(controlDeclarations))
+end
+
+return actions

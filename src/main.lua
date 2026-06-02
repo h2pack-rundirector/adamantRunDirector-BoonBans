@@ -21,8 +21,8 @@ local PLUGIN_GUID = _PLUGIN.guid
 local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
-    local godAvailability = import("mods/cache/god_availability.lua")
-    local actions = import("mods/actions.lua").create(data)
+    local godAvailability = import("mods/shared/god_availability.lua")
+    local actions = import("mods/actions.lua")
     local logic = import("mods/logic.lua", nil, data)
     local ui = import("mods/ui.lua")
 
@@ -41,17 +41,18 @@ local function init()
     module.data.define(data.storage)
     module.controls.defineTemplates(data.controlTemplates)
     module.controls.define(data.controls)
-    module.cache.define(logic.buildCacheDeclarations())
-    module.actions.define(actions)
-    module.ui.tab(ui.drawTab)
-    module.ui.quickContent(ui.drawQuickContent)
+    actions.attach(module, data.controls)
+
+    
+    godAvailability.attach(module)
+    logic.defineCache(module)
+    logic.attachHooks(module)
+    ui.attach(module)
 
     module.fallbackUi.attachGuiOnce(function(fallbackUi)
         rom.gui.add_imgui(fallbackUi.renderWindow)
         rom.gui.add_to_menu_bar(fallbackUi.addMenuBar)
     end)
-    godAvailability.registerShared(module)
-    logic.registerHooks(module)
     local ok = module.activate()
     if not ok then
         return

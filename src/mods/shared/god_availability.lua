@@ -1,4 +1,4 @@
-local GOD_AVAILABILITY_CACHE = "run-director.god-availability"
+local GOD_AVAILABILITY_SHARED_ID = "run-director.god-availability"
 local GOD_AVAILABILITY_REF = "GodAvailability"
 local GOD_KEYS = {
     "Aphrodite",
@@ -19,9 +19,9 @@ end
 
 local module = {}
 
-function module.registerShared(host)
+function module.attach(host)
     host.shared.data.reader(GOD_AVAILABILITY_REF, {
-        id = GOD_AVAILABILITY_CACHE,
+        id = GOD_AVAILABILITY_SHARED_ID,
         fallback = {
             active = false,
             available = {},
@@ -53,10 +53,6 @@ end
 
 function module.isAvailable(source, godKey)
     return module.isSnapshotAvailable(module.read(source), godKey)
-end
-
-function module.create()
-    return module
 end
 
 return module

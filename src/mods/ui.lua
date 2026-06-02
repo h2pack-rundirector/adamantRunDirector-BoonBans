@@ -26,7 +26,7 @@ local QUICK_RESET_ALL_CONFIRM_OPTS = {
     confirmLabel = "Confirm Reset All",
 }
 
-local function DrawSettingsTab(_, ui)
+local function drawSettingsTab(_, ui)
     local draw = ui.draw
     local dataRefs = ui.data
     local imgui = draw.imgui
@@ -70,7 +70,7 @@ function module.drawTab(host, ui)
     end
 
     if imgui.BeginTabItem("Settings") then
-        DrawSettingsTab(host, ui)
+        drawSettingsTab(host, ui)
         imgui.EndTabItem()
     end
 
@@ -82,6 +82,11 @@ function module.drawQuickContent(_, ui)
     local draw = ui.draw
     QUICK_RESET_ALL_CONFIRM_OPTS.action = ui.actions.get("resetAllControls")
     draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS)
+end
+
+function module.attach(host)
+    host.ui.tab(module.drawTab)
+    host.ui.quickContent(module.drawQuickContent)
 end
 
 return module
