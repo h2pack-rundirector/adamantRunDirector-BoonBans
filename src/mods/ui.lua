@@ -121,10 +121,8 @@ end
 function module.drawQuickContent(host, ui)
     local draw = ui.draw
     if draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS) then
-        local changed = ui.controls.resetAll()
-        if changed then
-            host.logIf("[Micro] Global Control Reset triggered.")
-        end
+        ui.resetAll()
+        host.logIf("[Micro] Global reset triggered.")
     end
 end
 
