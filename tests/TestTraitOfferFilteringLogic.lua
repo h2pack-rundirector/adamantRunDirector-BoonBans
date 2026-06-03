@@ -23,6 +23,7 @@ end
 
 function TestTraitOfferFilteringLogic:setUp()
     self.wraps = {}
+    self.contextWraps = {}
     lib = {}
     TraitData = {
         Allowed = {},
@@ -41,6 +42,9 @@ function TestTraitOfferFilteringLogic:setUp()
         hooks = {
             wrap = function(funcName, callback)
                 self.wraps[funcName] = callback
+            end,
+            contextWrap = function(funcName, callback)
+                self.contextWraps[funcName] = callback
             end,
         },
         isEnabled = function()
@@ -123,9 +127,6 @@ function TestTraitOfferFilteringLogic:setUp()
         module = self.host,
         runState = self.runState,
         traitInfo = self.traitInfo,
-        jpomContext = {
-            isJpomOffering = false,
-        },
         offerContext = {
             scratchKey = "lootOffers",
         },
@@ -180,42 +181,19 @@ function TestTraitOfferFilteringLogic:testTraitEligibilityCanBeBlocked()
     lu.assertFalse(result)
 end
 
-function TestTraitOfferFilteringLogic:testJpomEligibilityRoutesThroughKeepsakeControl()
-    assert(loadfile("src/mods/logic/trait_offer_filtering.lua"))({
-        module = self.host,
-        runState = self.runState,
-        traitInfo = self.traitInfo,
-        jpomContext = {
-            isJpomOffering = true,
-        },
-        offerContext = {
-            scratchKey = "lootOffers",
-        },
-    })
+function TestTraitOfferFilteringLogic:testTraitEligibilitySkipDuringReplacementTraitsUsesVanilla()
+    local context = {
+        wrap = function(funcName, callback)
+            self.contextWraps[funcName] = callback
+        end,
+    }
+    self.contextWraps.GetReplacementTraits(self.host, self.runtime, context)
 
-    local result = self.wraps.IsTraitEligible(self.host, self.runtime, function()
+    local eligibilityDuringReplacement = self.contextWraps.IsTraitEligible(function()
         return true
     end, {
-        Name = "AshenGift",
+        Name = "Blocked",
     }, {})
 
-    lu.assertFalse(result)
-end
-
-function TestTraitOfferFilteringLogic:testTraitEligibilitySkipDuringReplacementTraitsUsesVanilla()
-    local replacementCalled = false
-    local eligibilityDuringReplacement = nil
-
-    self.wraps.GetReplacementTraits(self.host, self.runtime, function()
-        replacementCalled = true
-        eligibilityDuringReplacement = self.wraps.IsTraitEligible(self.host, self.runtime, function()
-            return true
-        end, {
-            Name = "Blocked",
-        }, {})
-        return { "Blocked" }
-    end, { "Blocked" }, nil)
-
-    lu.assertTrue(replacementCalled)
     lu.assertTrue(eligibilityDuringReplacement)
 end

@@ -10,6 +10,5 @@ return {
     storage = data.storage,
     createRuntime = runtime.create,
     createUi = ui.create,
-    commands = ui.commands,
     views = ui.views,
 }

@@ -7,6 +7,10 @@ local activeBridalGlowRootId = ""
 
 local EMPTY_LIST = {}
 
+local function WriteSelectedBoon(ui, boonKey)
+    ui.data.get("BridalGlowTargetBoon"):write(boonKey or "")
+end
+
 local function GetBridalGlowEligibleTargets(root, ui)
     if not root then
         return EMPTY_LIST
@@ -119,12 +123,12 @@ function module.draw(ui, eligibleRoots)
     draw.widgets.text("Eligible Boons", mutedTextOpts)
     draw.widgets.separator()
     if imgui.Selectable("Random", selectedBoonKey == "") then
-        ui.actions.trigger("setBridalGlowTarget", "")
+        WriteSelectedBoon(ui, "")
         selectedBoonKey = ""
     end
     for _, target in ipairs(eligibleTargets) do
         if imgui.Selectable(target.label, target.key == selectedBoonKey) then
-            ui.actions.trigger("setBridalGlowTarget", target.key)
+            WriteSelectedBoon(ui, target.key)
             selectedBoonKey = target.key
         end
     end

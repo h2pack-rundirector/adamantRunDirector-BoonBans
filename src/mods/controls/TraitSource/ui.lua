@@ -252,19 +252,15 @@ local function getTierPanelOpts(control, instance, filterText)
     return control._tierPanelOpts
 end
 
-local function getButtonOpts(control, key, id, actionName, value)
+local function getButtonOpts(control, key, id)
     control._buttonOpts = control._buttonOpts or {}
     local opts = control._buttonOpts[key]
     if opts == nil then
         opts = {
             id = id,
         }
-        if actionName ~= nil then
-            opts.action = control:command(actionName)
-        end
         control._buttonOpts[key] = opts
     end
-    opts.value = value
     return opts
 end
 
@@ -289,21 +285,21 @@ local function drawTierPanel(draw, control, instance, tierIndex)
 
     imgui.SameLine()
     imgui.SetCursorPosX(imgui.GetCursorPosX() + 100)
-    draw.widgets.button("Ban All", getButtonOpts(
+    if draw.widgets.button("Ban All", getButtonOpts(
         control,
         "banAll:" .. tostring(tierIndex),
-        "ban_all_" .. tostring(instance.name) .. "_" .. tostring(tierIndex),
-        "banAllTier",
-        tierIndex
-    ))
+        "ban_all_" .. tostring(instance.name) .. "_" .. tostring(tierIndex)
+    )) then
+        control:banAllTier(tierIndex)
+    end
     imgui.SameLine()
-    draw.widgets.button("Reset", getButtonOpts(
+    if draw.widgets.button("Reset", getButtonOpts(
         control,
         "reset:" .. tostring(tierIndex),
-        "reset_" .. tostring(instance.name) .. "_" .. tostring(tierIndex),
-        "resetTier",
-        tierIndex
-    ))
+        "reset_" .. tostring(instance.name) .. "_" .. tostring(tierIndex)
+    )) then
+        control:resetTier(tierIndex)
+    end
 
     draw.widgets.separator()
     draw.widgets.packedCheckboxList(banField, getTierPanelOpts(control, instance, filterText))
@@ -402,19 +398,6 @@ function ui.create(fields, instance)
     instance.valueColors = buildValueColorsFromSchema(fields.Tiers:get(1, "Bans"))
     return control
 end
-
-ui.commands = {
-    banAllTier = function(host, _, _, control, tierIndex)
-        if control:banAllTier(tierIndex) then
-            host.logIf("[Micro] Banned ALL for %s", control:tierKey(tierIndex))
-        end
-    end,
-    resetTier = function(host, _, _, control, tierIndex)
-        if control:resetTier(tierIndex) then
-            host.logIf("[Micro] Reset bans for %s", control:tierKey(tierIndex))
-        end
-    end,
-}
 
 ui.views = {}
 

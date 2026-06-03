@@ -22,9 +22,10 @@ local function init()
     import_as_fallback(rom.game)
     local data = import("mods/data.lua")
     local godAvailability = import("mods/shared/god_availability.lua")
-    local actions = import("mods/actions.lua")
     local logic = import("mods/logic.lua", nil, data)
-    local ui = import("mods/ui.lua")
+    local ui = import("mods/ui.lua", nil, {
+        controlDeclarations = data.controls,
+    })
 
     local module = lib.createModule({
         pluginGuid = PLUGIN_GUID,
@@ -41,7 +42,6 @@ local function init()
     module.data.define(data.storage)
     module.controls.defineTemplates(data.controlTemplates)
     module.controls.define(data.controls)
-    actions.attach(module, data.controls)
 
     
     godAvailability.attach(module)
