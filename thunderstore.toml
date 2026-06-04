@@ -2,11 +2,11 @@
 schemaVersion = "0.0.1"
 
 [package]
-namespace = "adamant"
-name = "RunDirector_BoonBans"
+namespace = "adamantRunDirector"
+name = "BoonBans"
 description = "Control which blessings are offered by gods, NPCs, and keepsakes."
 versionNumber = "0.0.1"
-websiteUrl = "https://github.com/h2pack-rundirector/adamant-RunDirector_BoonBans"
+websiteUrl = "https://github.com/h2pack-rundirector/adamantRunDirector-BoonBans"
 containsNsfwContent = false
 
 [package.dependencies]

@@ -110,13 +110,13 @@ end
 
 function TestEntrypoint:testMainLuaBootsRealModule()
     local boot = harness.bootModule({
-        pluginGuid = "adamant-RunDirector_BoonBans",
+        pluginGuid = "adamantRunDirector-BoonBans",
         moduleSrcDir = "src",
         configureEnv = configureBoonBansEnv,
     })
 
     lu.assertNotNil(boot.liveModule)
-    lu.assertEquals(boot.liveModule.getHostId(), "adamant-RunDirector_BoonBans")
+    lu.assertEquals(boot.liveModule.getHostId(), "adamantRunDirector-BoonBans")
     lu.assertEquals(boot.liveModule.getModuleId(), "BoonBans")
     lu.assertEquals(boot.liveModule.getPackId(), "run-director")
     lu.assertEquals(#boot.callbacks.imgui, 1)
