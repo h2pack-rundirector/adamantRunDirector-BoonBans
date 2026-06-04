@@ -2,7 +2,7 @@
 -- luacheck: no unused args
 
 local lu = require("luaunit")
-local harness = dofile("../../Setup/tests/module_entrypoint_harness.lua")
+local harness = dofile("../../ModpackTools/tests/module_entrypoint_harness.lua")
 
 TestEntrypoint = {}
 
