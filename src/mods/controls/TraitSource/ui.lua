@@ -27,6 +27,7 @@ local MUTED_TEXT_OPTS = {
 local FILTER_INPUT_OPTS = {
     label = "",
     controlWidth = 180,
+    maxLen = 128,
 }
 local FORCE_DROPDOWN_BASE = {
     label = "",
@@ -81,7 +82,6 @@ end
 
 local function createFilterField(instance)
     local value = ""
-    local id = "filter_" .. tostring(instance.name)
     local field = {}
 
     function field:read()
@@ -103,10 +103,6 @@ local function createFilterField(instance)
 
     function field:alias()
         return "Filter"
-    end
-
-    function field:controlId()
-        return id
     end
 
     return field
@@ -309,7 +305,17 @@ local function drawTierPanel(draw, control, instance, tierIndex)
     imgui.AlignTextToFramePadding()
     imgui.Text("Filter:")
     imgui.SameLine()
-    draw.widgets.inputText(filterField, FILTER_INPUT_OPTS)
+    imgui.PushItemWidth(FILTER_INPUT_OPTS.controlWidth)
+    local nextFilterText, filterChanged = imgui.InputText(
+        "##" .. tostring(filterField:alias()) .. "_" .. tostring(instance.name),
+        filterText,
+        FILTER_INPUT_OPTS.maxLen
+    )
+    imgui.PopItemWidth()
+    if filterChanged then
+        filterField:write(nextFilterText)
+        filterText = tostring(filterField:read() or "")
+    end
     imgui.SameLine()
     if draw.widgets.button("Clear", getButtonOpts(control, "clearFilter", "clear_filter_" .. tostring(instance.name))) then
         filterField:reset()
