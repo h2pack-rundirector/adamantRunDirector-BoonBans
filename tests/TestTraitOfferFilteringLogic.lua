@@ -216,6 +216,15 @@ function TestTraitOfferFilteringLogic:testTraitEligibilityCanBeBlocked()
     lu.assertFalse(result)
 end
 
+function TestTraitOfferFilteringLogic:testTraitEligibilityNilTraitUsesVanilla()
+    local result = self.wraps.IsTraitEligible(self.host, self.runtime, function(traitData)
+        lu.assertNil(traitData)
+        return false
+    end, nil, {})
+
+    lu.assertFalse(result)
+end
+
 function TestTraitOfferFilteringLogic:testTraitEligibilitySkipDuringReplacementTraitsUsesVanilla()
     local context = {
         wrap = function(funcName, callback)

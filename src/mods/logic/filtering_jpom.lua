@@ -18,6 +18,10 @@ moduleRef.hooks.contextWrap("GiveRandomHadesBoonAndBoostBoons", function(host, r
     end
 
     context.wrap("IsTraitEligible", function(base, traitData, args)
+        if not traitData or not traitData.Name then
+            return base(traitData, args)
+        end
+
         if shouldBlockHadesKeepsakeTrait(runtime, traitData.Name) then
             host.logIf("[Micro] JPom IsTraitEligible BLOCKED: %s", traitData.Name)
             return false

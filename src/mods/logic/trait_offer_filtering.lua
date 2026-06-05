@@ -159,6 +159,7 @@ end)
 
 moduleRef.hooks.wrap("IsTraitEligible", function(host, runtime, base, traitData, args)
     if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
+    if not traitData or not traitData.Name then return base(traitData, args) end
 
     if shouldBlockTraitEligibility(traitData.Name, runtime) then
         host.logIf("[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)

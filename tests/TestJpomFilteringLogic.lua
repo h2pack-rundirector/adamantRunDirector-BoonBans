@@ -95,3 +95,15 @@ function TestJpomFilteringLogic:testJpomContextAllowsUnbannedKeepsakeTrait()
 
     lu.assertTrue(result)
 end
+
+function TestJpomFilteringLogic:testJpomContextNilTraitUsesVanilla()
+    local context = MakeContext()
+    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+
+    local result = context.wraps.IsTraitEligible(function(traitData)
+        lu.assertNil(traitData)
+        return false
+    end, nil, {})
+
+    lu.assertFalse(result)
+end
