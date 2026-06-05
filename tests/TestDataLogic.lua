@@ -111,6 +111,7 @@ function TestDataLogic.testStorageKeepsGlobalsAndControlsDeclareTraitSources()
 
     lu.assertEquals(byAlias.ImproveFirstNBoonRarity.type, "int")
     lu.assertEquals(byAlias.BridalGlowTargetBoon.type, "string")
+    lu.assertNil(byAlias.EnablePadding)
 
     local catalog = {
         entries = {
@@ -129,6 +130,21 @@ function TestDataLogic.testStorageKeepsGlobalsAndControlsDeclareTraitSources()
     lu.assertEquals(controls.Apollo.items[2].isRarityEligible, false)
     lu.assertFalse(controls.Apollo.items[2].isBridalGlowEligible)
     lu.assertEquals(controls.Staff.showValueColors, false)
+end
+
+function TestDataLogic.testStorageIncludesPaddingWhenPrivateFeatureIsEnabled()
+    local storage = dofile("src/mods/data/storage.lua").buildStorage({
+        privatePadding = true,
+    })
+    local byAlias = {}
+    for _, node in ipairs(storage) do
+        byAlias[node.alias] = node
+    end
+
+    lu.assertEquals(byAlias.EnablePadding.type, "bool")
+    lu.assertEquals(byAlias.Padding_PrioritizeCoreForFirstN.type, "int")
+    lu.assertEquals(byAlias.Padding_AvoidFutureAllowed.type, "bool")
+    lu.assertEquals(byAlias.Padding_AllowDuos.type, "bool")
 end
 
 function TestDataLogic.testControlsFailFastWhenRequiredSourceHasNoExtractedTraits()

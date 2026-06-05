@@ -25,6 +25,7 @@ local function init()
     local logic = import("mods/logic.lua", nil, data)
     local ui = import("mods/ui.lua", nil, {
         controlDeclarations = data.controls,
+        features = data.features,
     })
 
     local module = lib.createModule({

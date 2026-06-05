@@ -1,6 +1,8 @@
 local uiStyle = import("mods/ui/ui_style.lua")
 local deps = ...
 local controlDeclarations = deps.controlDeclarations
+local features = deps.features or {}
+local privatePadding = features.privatePadding == true
 local uiRoots = import("mods/ui/ui_roots.lua", nil, { style = uiStyle })
 local uiDeps = {
     style = uiStyle,
@@ -83,14 +85,17 @@ local function drawSettingsTab(host, ui)
     local dataRefs = ui.data
     local imgui = draw.imgui
 
-    draw.widgets.checkbox(dataRefs.get("EnablePadding"), ENABLE_PADDING_CHECKBOX_OPTS)
-    if dataRefs.get("EnablePadding"):read() == true then
-        draw.widgets.dropdown(dataRefs.get("Padding_PrioritizeCoreForFirstN"), PADDING_FIRST_N_DROPDOWN_OPTS)
-        draw.widgets.checkbox(dataRefs.get("Padding_AvoidFutureAllowed"), PADDING_AVOID_FUTURE_CHECKBOX_OPTS)
-        draw.widgets.checkbox(dataRefs.get("Padding_AllowDuos"), PADDING_ALLOW_DUOS_CHECKBOX_OPTS)
+    if privatePadding then
+        draw.widgets.checkbox(dataRefs.get("EnablePadding"), ENABLE_PADDING_CHECKBOX_OPTS)
+        if dataRefs.get("EnablePadding"):read() == true then
+            draw.widgets.dropdown(dataRefs.get("Padding_PrioritizeCoreForFirstN"), PADDING_FIRST_N_DROPDOWN_OPTS)
+            draw.widgets.checkbox(dataRefs.get("Padding_AvoidFutureAllowed"), PADDING_AVOID_FUTURE_CHECKBOX_OPTS)
+            draw.widgets.checkbox(dataRefs.get("Padding_AllowDuos"), PADDING_ALLOW_DUOS_CHECKBOX_OPTS)
+        end
+
+        imgui.Spacing()
     end
 
-    imgui.Spacing()
     draw.widgets.dropdown(dataRefs.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
@@ -142,9 +147,11 @@ end
 
 function module.drawQuickContent(host, ui)
     local draw = ui.draw
-    draw.widgets.checkbox(ui.data.get("EnablePadding"), {
-        label = "Padding Enabled",
-    })
+    if privatePadding then
+        draw.widgets.checkbox(ui.data.get("EnablePadding"), {
+            label = "Padding Enabled",
+        })
+    end
 
     if draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS) then
         ui.resetAll()

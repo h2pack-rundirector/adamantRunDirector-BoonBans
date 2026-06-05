@@ -10,6 +10,10 @@ on:
       is-dry-run:
         description: "Dry-run (do not publish, only test build)"
         type: boolean
+      include-private-padding:
+        description: "Include private padding feature in this build"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # required for pushing to the repository and creating releases
@@ -47,6 +51,14 @@ jobs:
 
       - name: Install Luacheck
         run: luarocks install luacheck
+
+      - name: Configure build features
+        run: |
+          cat > src/mods/features.lua <<'EOF'
+          return {
+              privatePadding = ${{ inputs.include-private-padding && 'true' || 'false' }},
+          }
+          EOF
 
       - name: Parse Lua sources
         run: |

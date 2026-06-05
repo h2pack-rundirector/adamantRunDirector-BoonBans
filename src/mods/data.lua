@@ -1,6 +1,7 @@
 _G.bit32 = _G.bit32 or require("bit32")
 
 local definitions = import("mods/data/definitions.lua")
+local features = import("mods/features.lua")
 local catalogModule = import("mods/data/catalog/catalog.lua")
 local storageSchema = import("mods/data/storage.lua")
 local controlDeclarations = import("mods/data/controls.lua")
@@ -13,8 +14,9 @@ local catalog = catalogModule.build(godDefs, baseBoonCatalog)
 local sourceResolver = sourceResolverModule.create(godDefs, catalog)
 
 return {
+    features = features,
     sourceResolver = sourceResolver,
-    storage = storageSchema.buildStorage(),
+    storage = storageSchema.buildStorage(features),
     controlTemplates = controlTemplates,
     controls = controlDeclarations.build(godDefs, catalog),
 }
