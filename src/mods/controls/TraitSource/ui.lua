@@ -79,6 +79,39 @@ local function buildValueColorsFromSchema(field)
     return colors
 end
 
+local function createFilterField(instance)
+    local value = ""
+    local id = "filter_" .. tostring(instance.name)
+    local field = {}
+
+    function field:read()
+        return value
+    end
+
+    function field:write(nextValue)
+        nextValue = tostring(nextValue or "")
+        if value == nextValue then
+            return false
+        end
+        value = nextValue
+        return true
+    end
+
+    function field:reset()
+        return self:write("")
+    end
+
+    function field:alias()
+        return "Filter"
+    end
+
+    function field:controlId()
+        return id
+    end
+
+    return field
+end
+
 local function countVisibleItems(instance, filterText)
     local lowerFilter = tostring(filterText or ""):lower()
     if lowerFilter == "" then
@@ -310,6 +343,7 @@ end
 
 function ui.create(fields, instance)
     local control = runtime.create(fields, instance)
+    local filterField = createFilterField(instance)
 
     function control:banField(tierIndex)
         if not self:isTierConfigured(tierIndex) then
@@ -319,7 +353,7 @@ function ui.create(fields, instance)
     end
 
     function control:filterField()
-        return fields.Filter
+        return filterField
     end
 
     function control:tierLabel(tierIndex)

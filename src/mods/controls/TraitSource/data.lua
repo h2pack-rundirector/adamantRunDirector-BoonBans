@@ -117,14 +117,6 @@ function data.storage(instance)
                 },
             },
         },
-        {
-            key = "Filter",
-            type = "string",
-            persist = false,
-            hash = false,
-            default = "",
-            maxLen = 128,
-        },
     }
 
     if instance.hasRarity then

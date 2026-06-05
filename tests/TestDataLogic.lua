@@ -189,13 +189,20 @@ function TestDataLogic.testTraitSourceUsesTraitNamesAsPackedKeys()
         group = "Core",
     })
     local storage = templates.TraitSource.storage(instance)
+    local rarityStorage = nil
+    for _, node in ipairs(storage) do
+        if node.key == "Rarity" then
+            rarityStorage = node
+            break
+        end
+    end
 
     lu.assertEquals(storage[1].row[1].bits[1].key, "Strike")
     lu.assertEquals(storage[1].row[1].bits[2].key, "Duo")
     lu.assertEquals(storage[1].row[1].bits[3].key, "Cast")
-    lu.assertEquals(storage[3].bits[1].key, "Strike")
-    lu.assertEquals(storage[3].bits[2].key, "Cast")
-    lu.assertEquals(#storage[3].bits, 2)
+    lu.assertEquals(rarityStorage.bits[1].key, "Strike")
+    lu.assertEquals(rarityStorage.bits[2].key, "Cast")
+    lu.assertEquals(#rarityStorage.bits, 2)
 
     local source = templates.TraitSource.createRuntime({}, instance)
     lu.assertEquals(source:name(), "Apollo")
