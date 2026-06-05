@@ -10,6 +10,7 @@ end
 
 function logic.attachHooks(module)
     local runState = runStateModule.create()
+    local padding = import("mods/logic/padding.lua")
     local traitInfo = import("mods/logic/trait_info.lua", nil, {
         sourceResolver = data.sourceResolver,
         runState = runState,
@@ -21,6 +22,7 @@ function logic.attachHooks(module)
         module = module,
         runState = runState,
         traitInfo = traitInfo,
+        padding = padding,
     }
     local offerContext = {
         scratchKey = "lootOffers",

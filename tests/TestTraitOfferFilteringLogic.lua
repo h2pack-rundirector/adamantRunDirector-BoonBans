@@ -57,6 +57,11 @@ function TestTraitOfferFilteringLogic:setUp()
         getBanPoolIndex = function()
             return 1
         end,
+        getBanPoolPickCounts = function()
+            return {
+                Apollo = 0,
+            }
+        end,
     }
     self.traitInfo = {
         resolveLoot = function(runtime, lootName)
@@ -116,17 +121,39 @@ function TestTraitOfferFilteringLogic:setUp()
         },
     }
     self.runtime = {
+        data = {
+            get = function(alias)
+                return {
+                    read = function()
+                        return alias == "EnablePadding"
+                    end,
+                }
+            end,
+        },
         controls = {
             get = function(name)
                 return self.sources[name]
             end,
         },
     }
+    self.paddingCalls = {}
+    self.padding = {
+        readConfig = function(runtime)
+            return {
+                enabled = runtime.data.get("EnablePadding"):read() == true,
+            }
+        end,
+        extendLootQueue = function(queue, opts)
+            self.paddingCalls[#self.paddingCalls + 1] = opts
+            queue[#queue + 1] = { ItemName = "Banned" }
+        end,
+    }
 
     assert(loadfile("src/mods/logic/trait_offer_filtering.lua"))({
         module = self.host,
         runState = self.runState,
         traitInfo = self.traitInfo,
+        padding = self.padding,
         offerContext = {
             scratchKey = "lootOffers",
         },
@@ -162,6 +189,7 @@ function TestTraitOfferFilteringLogic:testEligibleUpgradesStoresPendingOfferInRu
 
     lu.assertEquals(queue, {
         { ItemName = "Allowed" },
+        { ItemName = "Banned" },
     })
 
     local pending = self.runState.scratch.mapTake("lootOffers", lootData)
@@ -169,6 +197,13 @@ function TestTraitOfferFilteringLogic:testEligibleUpgradesStoresPendingOfferInRu
     lu.assertEquals(pending.allowed, {
         { ItemName = "Allowed" },
     })
+    lu.assertEquals(#self.paddingCalls, 1)
+    lu.assertEquals(self.paddingCalls[1].banned, {
+        { ItemName = "Banned" },
+    })
+    lu.assertEquals(self.paddingCalls[1].sourceInfo.controlName, "Apollo")
+    lu.assertEquals(self.paddingCalls[1].tierIndex, 1)
+    lu.assertEquals(self.paddingCalls[1].pickCount, 0)
 end
 
 function TestTraitOfferFilteringLogic:testTraitEligibilityCanBeBlocked()

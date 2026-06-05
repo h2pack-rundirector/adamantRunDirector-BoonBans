@@ -18,6 +18,20 @@ local FIRST_N_RARITY_DROPDOWN_OPTS = {
     values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 },
     controlWidth = 60,
 }
+local ENABLE_PADDING_CHECKBOX_OPTS = {
+    label = "Enable Padding",
+}
+local PADDING_FIRST_N_DROPDOWN_OPTS = {
+    label = "Prioritize Core Boons for First Picks",
+    values = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+    controlWidth = 60,
+}
+local PADDING_AVOID_FUTURE_CHECKBOX_OPTS = {
+    label = "Avoid Future Allowed Items",
+}
+local PADDING_ALLOW_DUOS_CHECKBOX_OPTS = {
+    label = "Allow Banned Duos/Legendaries",
+}
 local RESET_ALL_BANS_CONFIRM_OPTS = {
     confirmLabel = "Confirm RESET ALL BANS",
 }
@@ -69,6 +83,14 @@ local function drawSettingsTab(host, ui)
     local dataRefs = ui.data
     local imgui = draw.imgui
 
+    draw.widgets.checkbox(dataRefs.get("EnablePadding"), ENABLE_PADDING_CHECKBOX_OPTS)
+    if dataRefs.get("EnablePadding"):read() == true then
+        draw.widgets.dropdown(dataRefs.get("Padding_PrioritizeCoreForFirstN"), PADDING_FIRST_N_DROPDOWN_OPTS)
+        draw.widgets.checkbox(dataRefs.get("Padding_AvoidFutureAllowed"), PADDING_AVOID_FUTURE_CHECKBOX_OPTS)
+        draw.widgets.checkbox(dataRefs.get("Padding_AllowDuos"), PADDING_ALLOW_DUOS_CHECKBOX_OPTS)
+    end
+
+    imgui.Spacing()
     draw.widgets.dropdown(dataRefs.get("ImproveFirstNBoonRarity"), FIRST_N_RARITY_DROPDOWN_OPTS)
 
     imgui.Spacing()
@@ -120,6 +142,10 @@ end
 
 function module.drawQuickContent(host, ui)
     local draw = ui.draw
+    draw.widgets.checkbox(ui.data.get("EnablePadding"), {
+        label = "Padding Enabled",
+    })
+
     if draw.widgets.confirmButton("boon_bans_quick_reset_all", "Reset To Default", QUICK_RESET_ALL_CONFIRM_OPTS) then
         ui.resetAll()
         host.logIf("[Micro] Global reset triggered.")

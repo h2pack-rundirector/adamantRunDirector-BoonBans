@@ -6,6 +6,7 @@ local t_insert = table.insert
 local deps = ...
 local moduleRef = deps.module
 local traitInfo = deps.traitInfo
+local padding = deps.padding
 
 local function wrapNPCChoice(funcName)
     moduleRef.hooks.wrap(funcName, function(host, runtime, base, source, args, screen)
@@ -23,6 +24,14 @@ local function wrapNPCChoice(funcName)
                         t_insert(banned, option)
                     end
                 end
+            end
+
+            if padding then
+                padding.extendChoiceList(allowed, banned, {
+                    config = padding.readConfig(runtime),
+                    maxSize = GetTotalLootChoices(),
+                    force = funcName == "CirceBlessingChoice",
+                })
             end
 
             if #allowed > 0 then

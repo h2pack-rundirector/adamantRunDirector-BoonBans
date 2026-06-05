@@ -5,6 +5,7 @@ local moduleRef = deps.module
 local runState = deps.runState
 local traitInfo = deps.traitInfo
 local offerContext = deps.offerContext
+local padding = deps.padding
 
 local skipIsTraitEligible = false
 
@@ -118,6 +119,23 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
         GetTotalLootChoices(),
         host
     )
+
+    if padding then
+        local pickCounts = runState.getBanPoolPickCounts(runtime)
+        padding.extendLootQueue(queue, {
+            config = padding.readConfig(runtime),
+            banned = banned,
+            source = source,
+            sourceInfo = lootInfo,
+            tierIndex = banPoolIndex,
+            isHammer = isHammer,
+            priorityList = lootData.PriorityUpgrades,
+            queueMaxSize = GetTotalLootChoices(),
+            pickCount = sourceName and pickCounts[sourceName] or 0,
+            runtime = runtime,
+            traitInfo = traitInfo,
+        })
+    end
 
     host.logIf("Generated Priority Queue:")
     for i, queued in ipairs(queue) do
