@@ -16,6 +16,9 @@ function logic.attachHooks(module)
         sourceResolver = data.sourceResolver,
         runState = runState,
     })
+    local traitEligibility = import("mods/logic/trait_eligibility.lua", nil, {
+        traitInfo = traitInfo,
+    })
 
     module.logIf("[Micro] Boon source data populated.")
 
@@ -23,6 +26,7 @@ function logic.attachHooks(module)
         module = module,
         runState = runState,
         traitInfo = traitInfo,
+        traitEligibility = traitEligibility,
         padding = padding,
     }
     local offerContext = {
@@ -44,6 +48,7 @@ function logic.attachHooks(module)
         module = module,
         runState = runState,
         traitInfo = traitInfo,
+        traitEligibility = traitEligibility,
         padding = padding,
         offerContext = offerContext,
     })

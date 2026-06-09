@@ -10,8 +10,8 @@ function TestJpomFilteringLogic:setUp()
     lib = {}
     self.host = {
         hooks = {
-            wrap = function(funcName, callback)
-                self.wraps[funcName] = callback
+            wrap = function(funcName, keyOrCallback, maybeCallback)
+                self.wraps[funcName] = maybeCallback or keyOrCallback
             end,
             contextWrap = function(funcName, callback)
                 self.contextWraps[funcName] = callback
@@ -53,6 +53,9 @@ function TestJpomFilteringLogic:setUp()
             return runtimeContext.controls.get("HadesKeepsake")
         end,
     }
+    self.traitEligibility = assert(loadfile("src/mods/logic/trait_eligibility.lua"))({
+        traitInfo = self.traitInfo,
+    })
     UnitSetData = {
         NPC_Hades = {
             NPC_Hades_Field_01 = {
@@ -80,70 +83,52 @@ function TestJpomFilteringLogic:setUp()
 
     assert(loadfile("src/mods/logic/filtering_jpom.lua"))({
         module = self.host,
-        traitInfo = self.traitInfo,
+        traitEligibility = self.traitEligibility,
     })
 end
 
-local function MakeContext()
-    local wraps = {}
-    return {
-        wraps = wraps,
-        wrap = function(funcName, callback)
-            wraps[funcName] = callback
-        end,
-    }
+function TestJpomFilteringLogic:testJpomWrapActivatesPolicyForBannedKeepsakeTrait()
+    local blockedDuringHadesBoon = nil
+
+    self.wraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, function()
+        blockedDuringHadesBoon = self.traitEligibility.shouldBlock(self.runtime, TraitData.AshenGift)
+    end)
+
+    lu.assertTrue(blockedDuringHadesBoon)
 end
 
-function TestJpomFilteringLogic:testJpomContextBlocksBannedKeepsakeTrait()
-    local context = MakeContext()
-    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+function TestJpomFilteringLogic:testJpomWrapAllowsUnbannedKeepsakeTrait()
+    local blockedDuringHadesBoon = nil
 
-    local result = context.wraps.IsTraitEligible(function()
-        return true
-    end, {
-        Name = "AshenGift",
-    }, {})
+    self.wraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, function()
+        blockedDuringHadesBoon = self.traitEligibility.shouldBlock(self.runtime, TraitData.UnbannedGift)
+    end)
 
-    lu.assertFalse(result)
+    lu.assertFalse(blockedDuringHadesBoon)
 end
 
-function TestJpomFilteringLogic:testJpomContextAllowsUnbannedKeepsakeTrait()
-    local context = MakeContext()
-    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+function TestJpomFilteringLogic:testJpomWrapDoesNotLeavePolicyActiveAfterBase()
+    self.wraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, function()
+        lu.assertTrue(self.traitEligibility.isJpomFiltering())
+    end)
 
-    local result = context.wraps.IsTraitEligible(function()
-        return true
-    end, {
-        Name = "OtherTrait",
-    }, {})
-
-    lu.assertTrue(result)
+    lu.assertFalse(self.traitEligibility.isJpomFiltering())
 end
 
-function TestJpomFilteringLogic:testJpomContextNilTraitUsesVanilla()
-    local context = MakeContext()
-    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
-
-    local result = context.wraps.IsTraitEligible(function(traitData)
-        lu.assertNil(traitData)
-        return false
-    end, nil, {})
-
-    lu.assertFalse(result)
-end
-
-function TestJpomFilteringLogic:testJpomContextSkipsBanFilterWhenItWouldEmptyEligibleTraits()
+function TestJpomFilteringLogic:testJpomWrapSkipsBanFilterWhenItWouldEmptyEligibleTraits()
     UnitSetData.NPC_Hades.NPC_Hades_Field_01.Traits = {
         "AshenGift",
     }
-    local context = MakeContext()
+    local filteredDuringHadesBoon = nil
 
-    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+    self.wraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, function()
+        filteredDuringHadesBoon = self.traitEligibility.isJpomFiltering()
+    end)
 
-    lu.assertNil(context.wraps.IsTraitEligible)
+    lu.assertFalse(filteredDuringHadesBoon)
 end
 
-function TestJpomFilteringLogic:testJpomContextSkipsBanFilterWhenOnlyUnbannedTraitIsOwned()
+function TestJpomFilteringLogic:testJpomWrapSkipsBanFilterWhenOnlyUnbannedTraitIsOwned()
     UnitSetData.NPC_Hades.NPC_Hades_Field_01.Traits = {
         "AshenGift",
         "UnbannedGift",
@@ -151,9 +136,11 @@ function TestJpomFilteringLogic:testJpomContextSkipsBanFilterWhenOnlyUnbannedTra
     HeroHasTrait = function(traitName)
         return traitName == "UnbannedGift"
     end
-    local context = MakeContext()
+    local filteredDuringHadesBoon = nil
 
-    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+    self.wraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, function()
+        filteredDuringHadesBoon = self.traitEligibility.isJpomFiltering()
+    end)
 
-    lu.assertNil(context.wraps.IsTraitEligible)
+    lu.assertFalse(filteredDuringHadesBoon)
 end

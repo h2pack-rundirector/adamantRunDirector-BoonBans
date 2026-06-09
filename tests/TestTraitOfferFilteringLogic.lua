@@ -40,8 +40,8 @@ function TestTraitOfferFilteringLogic:setUp()
 
     self.host = {
         hooks = {
-            wrap = function(funcName, callback)
-                self.wraps[funcName] = callback
+            wrap = function(funcName, keyOrCallback, maybeCallback)
+                self.wraps[funcName] = maybeCallback or keyOrCallback
             end,
             contextWrap = function(funcName, callback)
                 self.contextWraps[funcName] = callback
@@ -105,6 +105,9 @@ function TestTraitOfferFilteringLogic:setUp()
             return runtime.controls.get("HadesKeepsake")
         end,
     }
+    self.traitEligibility = assert(loadfile("src/mods/logic/trait_eligibility.lua"))({
+        traitInfo = self.traitInfo,
+    })
     self.sources = {
         Apollo = {
             isTierConfigured = function()
@@ -153,6 +156,7 @@ function TestTraitOfferFilteringLogic:setUp()
         module = self.host,
         runState = self.runState,
         traitInfo = self.traitInfo,
+        traitEligibility = self.traitEligibility,
         padding = self.padding,
         offerContext = {
             scratchKey = "lootOffers",
@@ -226,18 +230,26 @@ function TestTraitOfferFilteringLogic:testTraitEligibilityNilTraitUsesVanilla()
 end
 
 function TestTraitOfferFilteringLogic:testTraitEligibilitySkipDuringReplacementTraitsUsesVanilla()
-    local context = {
-        wrap = function(funcName, callback)
-            self.contextWraps[funcName] = callback
-        end,
-    }
-    self.contextWraps.GetReplacementTraits(self.host, self.runtime, context)
-
-    local eligibilityDuringReplacement = self.contextWraps.IsTraitEligible(function()
-        return true
-    end, {
-        Name = "Blocked",
-    }, {})
+    local eligibilityDuringReplacement = nil
+    self.wraps.GetReplacementTraits(self.host, self.runtime, function()
+        eligibilityDuringReplacement = self.wraps.IsTraitEligible(self.host, self.runtime, function()
+            return true
+        end, {
+            Name = "Blocked",
+        }, {})
+    end)
 
     lu.assertTrue(eligibilityDuringReplacement)
+end
+
+function TestTraitOfferFilteringLogic:testReplacementTraitsUsesVanillaWhenDisabled()
+    self.host.isEnabled = function()
+        return false
+    end
+
+    local result = self.wraps.GetReplacementTraits(self.host, self.runtime, function(value)
+        return value
+    end, "vanilla")
+
+    lu.assertEquals(result, "vanilla")
 end

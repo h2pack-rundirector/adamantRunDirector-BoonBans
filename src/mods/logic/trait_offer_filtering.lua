@@ -4,30 +4,14 @@ local deps = ...
 local moduleRef = deps.module
 local runState = deps.runState
 local traitInfo = deps.traitInfo
+local traitEligibility = deps.traitEligibility
 local offerContext = deps.offerContext
 local padding = deps.padding
 
-local skipIsTraitEligible = false
-
-local function shouldBlockTraitEligibility(traitName, runtime)
-    local source, info = traitInfo.resolveCurrentTrait(runtime, traitName)
-    if not info then
-        return false
-    end
-
-    local tierIndex = info.tierIndex or 1
-    if not source or not source:isTierConfigured(tierIndex) then
-        return false
-    end
-
-    return source:isBanned(traitName, tierIndex) == true
-end
-
 local function getVanillaEligibleUpgrades(base, upgradeOptions, lootData, upgradeChoiceData)
-    skipIsTraitEligible = true
-    local result = base(upgradeOptions, lootData, upgradeChoiceData)
-    skipIsTraitEligible = false
-    return result
+    return traitEligibility.withBypass(function()
+        return base(upgradeOptions, lootData, upgradeChoiceData)
+    end)
 end
 
 local function generatePriorityQueue(allowed, isHammer, queueMaxSize, host)
@@ -151,18 +135,22 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
     return queue
 end)
 
-moduleRef.hooks.contextWrap("GetReplacementTraits", function(_, _, context)
-    context.wrap("IsTraitEligible", function(base, traitData, args)
-        return base(traitData, args)
+moduleRef.hooks.wrap("GetReplacementTraits", function(host, _, base, traitNames, onlyFromLootName)
+    if not host.isEnabled() then
+        return base(traitNames, onlyFromLootName)
+    end
+
+    return traitEligibility.withBypass(function()
+        return base(traitNames, onlyFromLootName)
     end)
 end)
 
-moduleRef.hooks.wrap("IsTraitEligible", function(host, runtime, base, traitData, args)
-    if not host.isEnabled() or skipIsTraitEligible then return base(traitData, args) end
-    if not traitData or not traitData.Name then return base(traitData, args) end
+moduleRef.hooks.wrap("IsTraitEligible", "boon-bans-eligibility", function(host, runtime, base, traitData, args)
+    if not host.isEnabled() or traitEligibility.isBypassing() then return base(traitData, args) end
 
-    if shouldBlockTraitEligibility(traitData.Name, runtime) then
-        host.logIf("[Micro] IsTraitEligible BLOCKED: %s", traitData.Name)
+    local blocked, reason = traitEligibility.shouldBlock(runtime, traitData)
+    if blocked then
+        host.logIf("[Micro] IsTraitEligible BLOCKED (%s): %s", tostring(reason), traitData.Name)
         return false
     end
 
