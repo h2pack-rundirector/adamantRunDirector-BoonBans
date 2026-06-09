@@ -39,8 +39,9 @@ read_globals = {
     "IncreaseTraitLevel",
     "HeraTraitRarityPresentation",
     "AddStackToTraits",
-
-    "GetTotalLootChoices"
+    "GetTotalLootChoices",
+    "IsTraitEligible",
+    "HeroHasTrait"
 
 
 }
