@@ -12,8 +12,43 @@ local function shouldBlockHadesKeepsakeTrait(runtime, traitName)
     return keepsake ~= nil and keepsake:isBanned(traitName, 1) == true
 end
 
+local function getHadesKeepsakeTraitNames()
+    local hadesData = UnitSetData
+        and UnitSetData.NPC_Hades
+        and UnitSetData.NPC_Hades.NPC_Hades_Field_01
+
+    return hadesData and hadesData.Traits or nil
+end
+
+local function isVanillaEligible(traitName)
+    local traitData = TraitData and TraitData[traitName] or nil
+    return traitData ~= nil and IsTraitEligible(traitData) == true
+end
+
+local function shouldFilterHadesKeepsakeTraits(runtime)
+    local traits = getHadesKeepsakeTraitNames()
+    if traits == nil then
+        return false
+    end
+
+    for _, traitName in pairs(traits) do
+        if not HeroHasTrait(traitName)
+            and isVanillaEligible(traitName)
+            and not shouldBlockHadesKeepsakeTrait(runtime, traitName) then
+            return true
+        end
+    end
+
+    return false
+end
+
 moduleRef.hooks.contextWrap("GiveRandomHadesBoonAndBoostBoons", function(host, runtime, context)
     if not host.isEnabled() then
+        return
+    end
+
+    if not shouldFilterHadesKeepsakeTraits(runtime) then
+        host.logIf("[Micro] JPom ban filter skipped: no non-banned eligible Hades keepsake traits remain")
         return
     end
 

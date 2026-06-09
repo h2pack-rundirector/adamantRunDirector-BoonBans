@@ -1,4 +1,4 @@
--- luacheck: globals TestJpomFilteringLogic lib
+-- luacheck: globals TestJpomFilteringLogic lib UnitSetData TraitData IsTraitEligible HeroHasTrait
 
 local lu = require("luaunit")
 
@@ -53,6 +53,30 @@ function TestJpomFilteringLogic:setUp()
             return runtimeContext.controls.get("HadesKeepsake")
         end,
     }
+    UnitSetData = {
+        NPC_Hades = {
+            NPC_Hades_Field_01 = {
+                Traits = {
+                    "AshenGift",
+                    "UnbannedGift",
+                },
+            },
+        },
+    }
+    TraitData = {
+        AshenGift = {
+            Name = "AshenGift",
+        },
+        UnbannedGift = {
+            Name = "UnbannedGift",
+        },
+    }
+    IsTraitEligible = function()
+        return true
+    end
+    HeroHasTrait = function()
+        return false
+    end
 
     assert(loadfile("src/mods/logic/filtering_jpom.lua"))({
         module = self.host,
@@ -106,4 +130,30 @@ function TestJpomFilteringLogic:testJpomContextNilTraitUsesVanilla()
     end, nil, {})
 
     lu.assertFalse(result)
+end
+
+function TestJpomFilteringLogic:testJpomContextSkipsBanFilterWhenItWouldEmptyEligibleTraits()
+    UnitSetData.NPC_Hades.NPC_Hades_Field_01.Traits = {
+        "AshenGift",
+    }
+    local context = MakeContext()
+
+    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+
+    lu.assertNil(context.wraps.IsTraitEligible)
+end
+
+function TestJpomFilteringLogic:testJpomContextSkipsBanFilterWhenOnlyUnbannedTraitIsOwned()
+    UnitSetData.NPC_Hades.NPC_Hades_Field_01.Traits = {
+        "AshenGift",
+        "UnbannedGift",
+    }
+    HeroHasTrait = function(traitName)
+        return traitName == "UnbannedGift"
+    end
+    local context = MakeContext()
+
+    self.contextWraps.GiveRandomHadesBoonAndBoostBoons(self.host, self.runtime, context)
+
+    lu.assertNil(context.wraps.IsTraitEligible)
 end
