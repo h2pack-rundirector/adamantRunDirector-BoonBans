@@ -1,14 +1,4 @@
--- luacheck: globals TestEntrypoint
 -- luacheck: no unused args
-
-local lu = require("luaunit")
-local function loadModpackToolsTest(name)
-    return dofile((os.getenv("MODPACK_TOOLS_DIR") or "../../ModpackTools") .. "/tests/" .. name)
-end
-
-local harness = loadModpackToolsTest("module_entrypoint_harness.lua")
-
-TestEntrypoint = {}
 
 local function addLootSetSource(lootSetData, sourceName, upgradeName, traitName)
     lootSetData[sourceName] = {
@@ -94,7 +84,6 @@ local function configureBoonBansGameData(env)
 end
 
 local function configureBoonBansEnv(env)
-    env.rom.game.Color = harness.makeColorTable()
     env.rom.game.GetDisplayName = function(args)
         return args and args.Text or ""
     end
@@ -112,17 +101,4 @@ local function configureBoonBansEnv(env)
     end
 end
 
-function TestEntrypoint:testMainLuaBootsRealModule()
-    local boot = harness.bootModule({
-        pluginGuid = "adamantRunDirector-BoonBans",
-        moduleSrcDir = "src",
-        configureEnv = configureBoonBansEnv,
-    })
-
-    lu.assertNotNil(boot.liveModule)
-    lu.assertEquals(boot.liveModule.getOwnerId(), "adamantRunDirector-BoonBans")
-    lu.assertEquals(boot.liveModule.getModuleId(), "BoonBans")
-    lu.assertEquals(boot.liveModule.getPackId(), "run-director")
-    lu.assertEquals(#boot.callbacks.imgui, 1)
-    lu.assertEquals(#boot.callbacks.menuBar, 2)
-end
+return configureBoonBansEnv
