@@ -101,4 +101,8 @@ local function configureBoonBansEnv(env)
     end
 end
 
-return configureBoonBansEnv
+return {
+    expectedPackId = "run-director",
+    expectedModuleId = "BoonBans",
+    configureEnv = configureBoonBansEnv,
+}
