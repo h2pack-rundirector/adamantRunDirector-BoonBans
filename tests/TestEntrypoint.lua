@@ -2,7 +2,24 @@
 -- luacheck: no unused args
 
 local lu = require("luaunit")
-local harness = dofile("../../ModpackTools/tests/module_entrypoint_harness.lua")
+local function loadModpackToolsTest(name)
+    local candidates = {
+        (os.getenv("MODPACK_TOOLS_DIR") or ".modpacktools") .. "/tests/" .. name,
+        "../../ModpackTools/tests/" .. name,
+    }
+
+    local failures = {}
+    for _, path in ipairs(candidates) do
+        local ok, result = pcall(dofile, path)
+        if ok then
+            return result
+        end
+        failures[#failures + 1] = tostring(result)
+    end
+    error("unable to load ModpackTools test helper: " .. table.concat(failures, "; "), 2)
+end
+
+local harness = loadModpackToolsTest("module_entrypoint_harness.lua")
 
 TestEntrypoint = {}
 
