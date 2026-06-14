@@ -104,22 +104,20 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
         host
     )
 
-    if padding then
-        local pickCounts = runState.getBanPoolPickCounts(runtime)
-        padding.extendLootQueue(queue, {
-            config = padding.readConfig(runtime),
-            banned = banned,
-            source = source,
-            sourceInfo = lootInfo,
-            tierIndex = banPoolIndex,
-            isHammer = isHammer,
-            priorityList = lootData.PriorityUpgrades,
-            queueMaxSize = GetTotalLootChoices(),
-            pickCount = sourceName and pickCounts[sourceName] or 0,
-            runtime = runtime,
-            traitInfo = traitInfo,
-        })
-    end
+    local pickCounts = runState.getBanPoolPickCounts(runtime)
+    local safetyFillerNames = padding.fillLootQueue(queue, banned, runtime, {
+        source = source,
+        sourceInfo = lootInfo,
+        tierIndex = banPoolIndex,
+        isHammer = isHammer,
+        priorityList = lootData.PriorityUpgrades,
+        queueMaxSize = GetTotalLootChoices(),
+        pickCount = sourceName and pickCounts[sourceName] or 0,
+        traitInfo = traitInfo,
+        sourceCount = #fullList,
+        minSourceCount = GetTotalLootChoices(),
+        host = host,
+    })
 
     host.logIf("Generated Priority Queue:")
     for i, queued in ipairs(queue) do
@@ -130,6 +128,7 @@ moduleRef.hooks.wrap("GetEligibleUpgrades", function(host, runtime, base, upgrad
         allowed = allowed,
         fullCount = #fullList,
         duoLegendaryQueue = duoLegendaryQueue,
+        safetyFillerNames = safetyFillerNames,
     })
 
     return queue

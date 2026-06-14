@@ -4,6 +4,27 @@ local function getOptionName(option)
     return option and (option.ItemName or option.Name or option.TraitName) or nil
 end
 
+local function cloneOption(option)
+    if type(option) ~= "table" then
+        return option
+    end
+
+    local copy = {}
+    for key, value in pairs(option) do
+        copy[key] = value
+    end
+    return copy
+end
+
+local function hasOptionName(list, optionName)
+    for _, option in ipairs(list) do
+        if getOptionName(option) == optionName then
+            return true
+        end
+    end
+    return false
+end
+
 local function shuffleList(list)
     for i = #list, 2, -1 do
         local j = math.random(1, i)
@@ -47,6 +68,41 @@ local function isAllowedInFutureTier(name, opts)
     return false
 end
 
+local function appendDistinctFromPool(list, pool, maxSize, opts)
+    opts = opts or {}
+    local addedNames = nil
+
+    for _, item in ipairs(pool or {}) do
+        if #list >= maxSize then
+            break
+        end
+
+        local name = getOptionName(item)
+        if name and not hasOptionName(list, name) then
+            local fill = opts.clone == false and item or cloneOption(item)
+            if type(fill) == "table" and opts.markSafety == true then
+                fill.BoonBansSafetyFiller = true
+            end
+            list[#list + 1] = fill
+
+            if opts.trackNames == true then
+                addedNames = addedNames or {}
+                addedNames[name] = true
+            end
+        end
+    end
+
+    return addedNames
+end
+
+local function countMap(map)
+    local count = 0
+    for _ in pairs(map or {}) do
+        count = count + 1
+    end
+    return count
+end
+
 function padding.readConfig(runtime)
     local data = runtime and runtime.data or nil
     if not data then
@@ -63,6 +119,15 @@ function padding.readConfig(runtime)
         prioritizeCoreForFirstN = data.get("Padding_PrioritizeCoreForFirstN"):read() or 0,
         avoidFutureAllowed = data.get("Padding_AvoidFutureAllowed"):read() ~= false,
         allowDuos = data.get("Padding_AllowDuos"):read() == true,
+    }
+end
+
+function padding.disabledConfig()
+    return {
+        enabled = false,
+        prioritizeCoreForFirstN = 0,
+        avoidFutureAllowed = true,
+        allowDuos = false,
     }
 end
 
@@ -124,6 +189,72 @@ function padding.extendLootQueue(queue, opts)
     appendFrom(lowPriority)
 end
 
+function padding.safetyFillLootQueue(queue, opts)
+    opts = opts or {}
+    local maxSize = opts.queueMaxSize or #queue
+    local sourceCount = opts.sourceCount or 0
+    local minSourceCount = opts.minSourceCount or maxSize
+
+    if #queue >= maxSize or sourceCount < minSourceCount then
+        return nil
+    end
+
+    local safetyNames = appendDistinctFromPool(queue, opts.banned, maxSize, {
+        clone = true,
+        markSafety = true,
+        trackNames = true,
+    })
+
+    if opts.host and safetyNames then
+        opts.host.logIf("[Micro] Safety filled %d missing loot choice(s)", countMap(safetyNames))
+    end
+
+    return safetyNames
+end
+
+function padding.replaceSafetyFillersWithFallbackGold(options, safetyNames)
+    local replaced = 0
+    for index, item in ipairs(options or {}) do
+        local name = getOptionName(item)
+        if (type(item) == "table" and item.BoonBansSafetyFiller == true)
+            or (name and safetyNames and safetyNames[name]) then
+            options[index] = {
+                ItemName = "FallbackGold",
+                Type = "Trait",
+                Rarity = "Common",
+            }
+            replaced = replaced + 1
+        end
+    end
+
+    return replaced
+end
+
+function padding.safetyFillChoiceListWithFallbackGold(allowed, banned, opts)
+    opts = opts or {}
+    local maxSize = opts.maxSize or #allowed
+
+    if #allowed == 0 or #allowed >= maxSize or #(banned or {}) == 0 then
+        return 0
+    end
+
+    local added = 0
+    while #allowed < maxSize do
+        allowed[#allowed + 1] = {
+            ItemName = "FallbackGold",
+            Type = "Trait",
+            Rarity = "Common",
+        }
+        added = added + 1
+    end
+
+    if opts.host and added > 0 then
+        opts.host.logIf("[Micro] Safety filled %d NPC choice(s) with FallbackGold", added)
+    end
+
+    return added
+end
+
 function padding.extendChoiceList(allowed, banned, opts)
     opts = opts or {}
     local config = opts.config or {}
@@ -161,6 +292,67 @@ function padding.extendChoiceList(allowed, banned, opts)
     end
 
     return allowed
+end
+
+function padding.create(opts)
+    opts = opts or {}
+    local useConfiguredPadding = opts.privatePadding == true
+
+    local function readBoundConfig(runtime)
+        if useConfiguredPadding then
+            return padding.readConfig(runtime)
+        end
+        return padding.disabledConfig()
+    end
+
+    return {
+        fillChoiceList = function(allowed, banned, runtime, fillOpts)
+            fillOpts = fillOpts or {}
+            padding.extendChoiceList(allowed, banned, {
+                config = readBoundConfig(runtime),
+                maxSize = fillOpts.maxSize,
+            })
+            return padding.safetyFillChoiceListWithFallbackGold(allowed, banned, {
+                maxSize = fillOpts.maxSize,
+                host = fillOpts.host,
+            })
+        end,
+
+        fillSpellList = function(allowed, banned, runtime, fillOpts)
+            fillOpts = fillOpts or {}
+            return padding.extendChoiceList(allowed, banned, {
+                config = readBoundConfig(runtime),
+                maxSize = fillOpts.maxSize,
+            })
+        end,
+
+        fillLootQueue = function(queue, banned, runtime, fillOpts)
+            fillOpts = fillOpts or {}
+            padding.extendLootQueue(queue, {
+                config = readBoundConfig(runtime),
+                banned = banned,
+                source = fillOpts.source,
+                sourceInfo = fillOpts.sourceInfo,
+                tierIndex = fillOpts.tierIndex,
+                isHammer = fillOpts.isHammer,
+                priorityList = fillOpts.priorityList,
+                queueMaxSize = fillOpts.queueMaxSize,
+                pickCount = fillOpts.pickCount,
+                runtime = runtime,
+                traitInfo = fillOpts.traitInfo,
+            })
+
+            return padding.safetyFillLootQueue(queue, {
+                banned = banned,
+                queueMaxSize = fillOpts.queueMaxSize,
+                sourceCount = fillOpts.sourceCount,
+                minSourceCount = fillOpts.minSourceCount,
+                host = fillOpts.host,
+            })
+        end,
+
+        replaceSafetyFillersWithFallbackGold = padding.replaceSafetyFillersWithFallbackGold,
+    }
 end
 
 return padding

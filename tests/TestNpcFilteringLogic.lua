@@ -42,22 +42,8 @@ function TestNpcFilteringLogic:setUp()
             return name == "Banned"
         end,
     }
-    self.paddingCalls = {}
-    self.padding = {
-        readConfig = function()
-            return {
-                enabled = true,
-            }
-        end,
-        extendChoiceList = function(allowed, banned, opts)
-            self.paddingCalls[#self.paddingCalls + 1] = {
-                allowed = allowed,
-                banned = banned,
-                opts = opts,
-            }
-            allowed[#allowed + 1] = banned[1]
-        end,
-    }
+    self.paddingModule = assert(loadfile("src/mods/logic/padding.lua"))()
+    self.padding = self.paddingModule.create({ privatePadding = true })
 
     assert(loadfile("src/mods/logic/filtering_npc.lua"))({
         module = self.host,
@@ -83,21 +69,34 @@ function TestNpcFilteringLogic:testNpcChoiceFiltersBannedAndIneligibleOptions()
     lu.assertEquals(baseArgs.UpgradeOptions, {
         { ItemName = "Allowed" },
         { ItemName = "Banned" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
     })
-    lu.assertEquals(#self.paddingCalls, 1)
-    lu.assertFalse(self.paddingCalls[1].opts.force)
 end
 
-function TestNpcFilteringLogic:testCirceChoiceForcesPadding()
+function TestNpcFilteringLogic:testNpcChoiceUsesFallbackGoldWithoutPrivatePadding()
+    self.wraps = {}
+    self.padding = self.paddingModule.create({ privatePadding = false })
+    assert(loadfile("src/mods/logic/filtering_npc.lua"))({
+        module = self.host,
+        traitInfo = self.traitInfo,
+        padding = self.padding,
+    })
+
     local args = {
         UpgradeOptions = {
             { ItemName = "Allowed" },
             { ItemName = "Banned" },
         },
     }
+    local baseArgs
 
-    self.wraps.CirceBlessingChoice(self.host, self.runtime, function() end, {}, args, {})
+    self.wraps.ArachneCostumeChoice(self.host, self.runtime, function(_, receivedArgs)
+        baseArgs = receivedArgs
+    end, {}, args, {})
 
-    lu.assertEquals(#self.paddingCalls, 1)
-    lu.assertTrue(self.paddingCalls[1].opts.force)
+    lu.assertEquals(baseArgs.UpgradeOptions, {
+        { ItemName = "Allowed" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
 end

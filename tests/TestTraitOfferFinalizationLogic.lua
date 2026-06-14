@@ -97,11 +97,13 @@ function TestTraitOfferFinalizationLogic:setUp()
             end,
         },
     }
+    self.padding = assert(loadfile("src/mods/logic/padding.lua"))()
 
     assert(loadfile("src/mods/logic/trait_offer_finalization.lua"))({
         module = self.host,
         runState = self.runState,
         traitInfo = self.traitInfo,
+        padding = self.padding,
         offerContext = {
             scratchKey = "lootOffers",
         },
@@ -151,4 +153,33 @@ function TestTraitOfferFinalizationLogic:testSetTraitsOnLootAppliesRarityOverrid
 
     lu.assertEquals(lootData.UpgradeOptions[1].Rarity, "Epic")
     lu.assertTrue(lootData.UpgradeOptions[1].ForceRarity)
+end
+
+function TestTraitOfferFinalizationLogic:testSetTraitsOnLootConvertsSafetyFillersToFallbackGold()
+    local lootData = {
+        Name = "ApolloUpgrade",
+        UpgradeOptions = {
+            { ItemName = "Allowed" },
+            { ItemName = "BannedA", BoonBansSafetyFiller = true },
+            { ItemName = "BannedB" },
+        },
+    }
+    self.runState.scratch.mapSet("lootOffers", lootData, {
+        allowed = {
+            { ItemName = "Allowed" },
+        },
+        fullCount = 3,
+        safetyFillerNames = {
+            BannedA = true,
+            BannedB = true,
+        },
+    })
+
+    self.wraps.SetTraitsOnLoot(self.host, self.runtime, function() end, lootData, {})
+
+    lu.assertEquals(lootData.UpgradeOptions, {
+        { ItemName = "Allowed", Rarity = "Epic", ForceRarity = true },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
 end

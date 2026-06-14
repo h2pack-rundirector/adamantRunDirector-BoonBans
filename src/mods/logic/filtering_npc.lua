@@ -26,13 +26,10 @@ local function wrapNPCChoice(funcName)
                 end
             end
 
-            if padding then
-                padding.extendChoiceList(allowed, banned, {
-                    config = padding.readConfig(runtime),
-                    maxSize = GetTotalLootChoices(),
-                    force = funcName == "CirceBlessingChoice",
-                })
-            end
+            padding.fillChoiceList(allowed, banned, runtime, {
+                maxSize = GetTotalLootChoices(),
+                host = host,
+            })
 
             if #allowed > 0 then
                 args.UpgradeOptions = allowed

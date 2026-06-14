@@ -141,14 +141,27 @@ function TestTraitOfferFilteringLogic:setUp()
     }
     self.paddingCalls = {}
     self.padding = {
-        readConfig = function(runtime)
-            return {
-                enabled = runtime.data.get("EnablePadding"):read() == true,
+        fillLootQueue = function(queue, banned, runtime, opts)
+            self.paddingCalls[#self.paddingCalls + 1] = {
+                banned = banned,
+                runtime = runtime,
+                opts = opts,
             }
-        end,
-        extendLootQueue = function(queue, opts)
-            self.paddingCalls[#self.paddingCalls + 1] = opts
-            queue[#queue + 1] = { ItemName = "Banned" }
+            if opts.addRealPadding ~= false then
+                queue[#queue + 1] = { ItemName = "Banned" }
+            end
+            if #queue >= opts.queueMaxSize or opts.sourceCount < opts.minSourceCount then
+                return nil
+            end
+            local item = banned and banned[1] or nil
+            if not item then
+                return nil
+            end
+            local filler = { ItemName = item.ItemName, BoonBansSafetyFiller = true }
+            queue[#queue + 1] = filler
+            return {
+                [item.ItemName] = true,
+            }
         end,
     }
 
@@ -205,9 +218,47 @@ function TestTraitOfferFilteringLogic:testEligibleUpgradesStoresPendingOfferInRu
     lu.assertEquals(self.paddingCalls[1].banned, {
         { ItemName = "Banned" },
     })
-    lu.assertEquals(self.paddingCalls[1].sourceInfo.controlName, "Apollo")
-    lu.assertEquals(self.paddingCalls[1].tierIndex, 1)
-    lu.assertEquals(self.paddingCalls[1].pickCount, 0)
+    lu.assertEquals(self.paddingCalls[1].opts.sourceInfo.controlName, "Apollo")
+    lu.assertEquals(self.paddingCalls[1].opts.tierIndex, 1)
+    lu.assertEquals(self.paddingCalls[1].opts.pickCount, 0)
+end
+
+function TestTraitOfferFilteringLogic:testEligibleUpgradesFillsArtificialShortQueueWithSafetyOption()
+    self.padding.fillLootQueue = function(queue, banned, _, opts)
+        if #queue >= opts.queueMaxSize or opts.sourceCount < opts.minSourceCount then
+            return nil
+        end
+        local item = banned and banned[1] or nil
+        if not item then
+            return nil
+        end
+        local filler = { ItemName = item.ItemName, BoonBansSafetyFiller = true }
+        queue[#queue + 1] = filler
+        return {
+            [item.ItemName] = true,
+        }
+    end
+    local lootData = { Name = "ApolloUpgrade" }
+    local fullList = {
+        { ItemName = "Allowed" },
+        { ItemName = "Eligible" },
+        { ItemName = "Banned" },
+    }
+
+    local queue = self.wraps.GetEligibleUpgrades(self.host, self.runtime, function()
+        return fullList
+    end, {}, lootData, {})
+
+    lu.assertEquals(queue, {
+        { ItemName = "Allowed" },
+        { ItemName = "Eligible" },
+        { ItemName = "Banned", BoonBansSafetyFiller = true },
+    })
+
+    local pending = self.runState.scratch.mapTake("lootOffers", lootData)
+    lu.assertEquals(pending.safetyFillerNames, {
+        Banned = true,
+    })
 end
 
 function TestTraitOfferFilteringLogic:testTraitEligibilityCanBeBlocked()

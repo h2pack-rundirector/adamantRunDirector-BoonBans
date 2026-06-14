@@ -29,12 +29,9 @@ moduleRef.hooks.wrap("GetEligibleSpells", function(host, runtime, base, screen, 
 
     if #allowed == 0 then return eligible end
 
-    if padding then
-        padding.extendChoiceList(allowed, banned, {
-            config = padding.readConfig(runtime),
-            maxSize = GetTotalLootChoices(),
-        })
-    end
+    padding.fillSpellList(allowed, banned, runtime, {
+        maxSize = GetTotalLootChoices(),
+    })
 
     return allowed
 end)

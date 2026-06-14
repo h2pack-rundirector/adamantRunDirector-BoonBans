@@ -158,6 +158,148 @@ function TestPaddingLogic:testExtendLootQueuePrioritizesCoreBoonsBeforeFirstNAcq
     })
 end
 
+function TestPaddingLogic:testSafetyFillLootQueueAddsDistinctMarkedFillers()
+    local queue = {
+        { ItemName = "Allowed" },
+    }
+
+    local safetyNames = self.padding.safetyFillLootQueue(queue, {
+        banned = {
+            { ItemName = "Allowed" },
+            { ItemName = "BannedA" },
+            { ItemName = "BannedB" },
+        },
+        queueMaxSize = 3,
+        sourceCount = 3,
+        minSourceCount = 3,
+    })
+
+    lu.assertEquals(queue, {
+        { ItemName = "Allowed" },
+        { ItemName = "BannedA", BoonBansSafetyFiller = true },
+        { ItemName = "BannedB", BoonBansSafetyFiller = true },
+    })
+    lu.assertEquals(safetyNames, {
+        BannedA = true,
+        BannedB = true,
+    })
+end
+
+function TestPaddingLogic:testSafetyFillLootQueueKeepsNaturalShortPoolsShort()
+    local queue = {
+        { ItemName = "Allowed" },
+    }
+
+    local safetyNames = self.padding.safetyFillLootQueue(queue, {
+        banned = {
+            { ItemName = "Banned" },
+        },
+        queueMaxSize = 3,
+        sourceCount = 2,
+        minSourceCount = 3,
+    })
+
+    lu.assertEquals(queue, {
+        { ItemName = "Allowed" },
+    })
+    lu.assertNil(safetyNames)
+end
+
+function TestPaddingLogic:testReplaceSafetyFillersWithFallbackGold()
+    local options = {
+        { ItemName = "Allowed" },
+        { ItemName = "BannedA", BoonBansSafetyFiller = true },
+        { ItemName = "BannedB" },
+    }
+
+    local replaced = self.padding.replaceSafetyFillersWithFallbackGold(options, {
+        BannedB = true,
+    })
+
+    lu.assertEquals(replaced, 2)
+    lu.assertEquals(options, {
+        { ItemName = "Allowed" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
+end
+
+function TestPaddingLogic:testSafetyFillChoiceListUsesFallbackGold()
+    local allowed = {
+        { ItemName = "Allowed" },
+    }
+
+    local added = self.padding.safetyFillChoiceListWithFallbackGold(allowed, {
+        { ItemName = "Banned" },
+    }, {
+        maxSize = 3,
+    })
+
+    lu.assertEquals(added, 2)
+    lu.assertEquals(allowed, {
+        { ItemName = "Allowed" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
+end
+
+function TestPaddingLogic:testCreatedChoicePaddingUsesFallbackGoldWithoutPrivatePadding()
+    local service = self.padding.create({ privatePadding = false })
+    local allowed = {
+        { ItemName = "Allowed" },
+    }
+
+    service.fillChoiceList(allowed, {
+        { ItemName = "Banned" },
+    }, makeRuntime({}), {
+        maxSize = 3,
+    })
+
+    lu.assertEquals(allowed, {
+        { ItemName = "Allowed" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
+end
+
+function TestPaddingLogic:testCreatedChoicePaddingUsesRealPaddingBeforeFallbackGold()
+    local service = self.padding.create({ privatePadding = true })
+    local allowed = {
+        { ItemName = "Allowed" },
+    }
+
+    service.fillChoiceList(allowed, {
+        { ItemName = "Banned" },
+    }, makeRuntime({
+        EnablePadding = true,
+    }), {
+        maxSize = 3,
+    })
+
+    lu.assertEquals(allowed, {
+        { ItemName = "Allowed" },
+        { ItemName = "Banned" },
+        { ItemName = "FallbackGold", Type = "Trait", Rarity = "Common" },
+    })
+end
+
+function TestPaddingLogic:testCreatedSpellPaddingDoesNotUseFallbackGold()
+    local service = self.padding.create({ privatePadding = false })
+    local allowed = {
+        "AllowedSpell",
+    }
+
+    service.fillSpellList(allowed, {
+        "BannedSpell",
+    }, makeRuntime({}), {
+        maxSize = 3,
+    })
+
+    lu.assertEquals(allowed, {
+        "AllowedSpell",
+    })
+end
+
 function TestPaddingLogic:testExtendChoiceListPadsWhenEnabledOrForced()
     local allowed = { { ItemName = "Allowed" } }
     self.padding.extendChoiceList(allowed, {

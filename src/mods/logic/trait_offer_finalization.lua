@@ -5,6 +5,7 @@ local moduleRef = deps.module
 local runState = deps.runState
 local traitInfo = deps.traitInfo
 local offerContext = deps.offerContext
+local padding = deps.padding
 
 local function getTraitRarityOverride(traitName, runtime, sourceInfo, tierIndex)
     local source, info = traitInfo.resolveTrait(runtime, traitName, sourceInfo, tierIndex)
@@ -36,6 +37,13 @@ local function applyRarityOverrides(lootData, runtime, lootInfo, banPoolIndex, h
     end
 end
 
+local function replaceSafetyFillersWithFallbackGold(lootData, safetyFillerNames, host)
+    local replaced = padding.replaceSafetyFillersWithFallbackGold(lootData.UpgradeOptions, safetyFillerNames)
+    if replaced > 0 then
+        host.logIf("[Micro] Converted %d safety filler choice(s) to FallbackGold", replaced)
+    end
+end
+
 moduleRef.hooks.wrap("SetTraitsOnLoot", function(host, runtime, base, lootData, args)
     base(lootData, args)
 
@@ -44,6 +52,7 @@ moduleRef.hooks.wrap("SetTraitsOnLoot", function(host, runtime, base, lootData, 
     local allowed = pendingOffer.allowed or {}
     local fullCount = pendingOffer.fullCount or 0
     local duoLegendaryQueue = pendingOffer.duoLegendaryQueue
+    local safetyFillerNames = pendingOffer.safetyFillerNames
 
     if not host.isEnabled() then
         return
@@ -52,6 +61,7 @@ moduleRef.hooks.wrap("SetTraitsOnLoot", function(host, runtime, base, lootData, 
     local lootInfo = traitInfo.lookupLoot(lootData.Name)
     local banPoolIndex = traitInfo.currentTierIndex(runtime, lootInfo)
 
+    replaceSafetyFillersWithFallbackGold(lootData, safetyFillerNames, host)
     applyRarityOverrides(lootData, runtime, lootInfo, banPoolIndex, host)
 
     if #allowed <= 2 and #allowed > 0 then

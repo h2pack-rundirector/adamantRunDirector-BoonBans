@@ -11,7 +11,9 @@ end
 
 function logic.attachHooks(module)
     local runState = runStateModule.create()
-    local padding = features.privatePadding == true and import("mods/logic/padding.lua") or nil
+    local padding = import("mods/logic/padding.lua").create({
+        privatePadding = features.privatePadding == true,
+    })
     local traitInfo = import("mods/logic/trait_info.lua", nil, {
         sourceResolver = data.sourceResolver,
         runState = runState,
@@ -56,6 +58,7 @@ function logic.attachHooks(module)
         module = module,
         runState = runState,
         traitInfo = traitInfo,
+        padding = padding,
         offerContext = offerContext,
     })
     import("mods/logic/rarity_first_n_boons.lua", nil, baseDeps)

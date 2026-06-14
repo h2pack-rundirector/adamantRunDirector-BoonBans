@@ -39,15 +39,11 @@ function TestHexFilteringLogic:setUp()
     }
     self.paddingCalls = {}
     self.padding = {
-        readConfig = function()
-            return {
-                enabled = true,
-            }
-        end,
-        extendChoiceList = function(allowed, banned, opts)
+        fillSpellList = function(allowed, banned, runtime, opts)
             self.paddingCalls[#self.paddingCalls + 1] = {
                 allowed = allowed,
                 banned = banned,
+                runtime = runtime,
                 opts = opts,
             }
             allowed[#allowed + 1] = banned[1]
